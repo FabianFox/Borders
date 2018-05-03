@@ -55,7 +55,7 @@ border.df <- contdird %>%
 
 # Polity IV
 # (1) Load the data retrieved from www.systemicpeace.org/inscrdata.html
-polityIV <- foreign::read.spss("./Data/p4v2016.sav", 
+polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2016.sav", 
                                to.data.frame = TRUE,
                                use.value.labels = FALSE)  
 
