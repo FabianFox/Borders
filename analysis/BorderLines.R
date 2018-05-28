@@ -15,6 +15,7 @@ europe.sf <- world.sf %>%
   filter(sovereignt %in% c("Germany", "Netherlands"))
 
 # Create a list that tells us whether two countries touch
+# (Code adopted from StackOverflow https://tinyurl.com/yacnowxu)
 Touching_List <- st_touches(europe.sf)
 
 # Get the line between those touching countries
