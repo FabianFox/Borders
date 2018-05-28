@@ -2,27 +2,34 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, sf, rnaturalearth)
+p_load(tidyverse, countrycode, sp, rnaturalearth, rgeos)
 
 # By now, this is just a test case. The ultimate goal is to identify border lines between
 # neighbouring countries. 
 
 # Get a map from rnaturalearth
-world.sf <- ne_countries(returnclass = "sf")
+world.sp <- ne_countries(returnclass = "sp")
 
 # Filter to two exemplary countries
-europe.sf <- world.sf %>%
-  filter(sovereignt %in% c("Germany", "Netherlands"))
+europe.sp <- world.sp[world.sp@data$region_un == "Europe" & world.sp@data$sovereignt != "Iceland",]
 
 # Create a list that tells us whether two countries touch
 # (Code adopted from StackOverflow https://tinyurl.com/yacnowxu)
-Touching_List <- st_touches(europe.sf)
+Touching_List <- gTouches(europe.sp, byid = TRUE, returnDense = FALSE)
 
-# Get the line between those touching countries
-from <- 1
-to <- 1
-line <- st_intersection(europe.sf[from,], europe.sf[Touching_List[[from]][to],])
+# Perimeters
+perimeters <- sp::SpatialLinesLengths(as(europe.sp, "SpatialLines"))
 
-# plot
-plot(st_geometry(europe.sf[c(from, Touching_List[[from]][to]),]))
-plot(line, add = TRUE, col = "red", lwd = 2)
+# Loop over the Touching_List and return lines
+all.length.list <- lapply(1:length(Touching_List), function(from) {
+  lines <- rgeos::gIntersection(europe.sp[from,], europe.sp[Touching_List[[from]],], byid = TRUE)
+  l_lines <- sp::SpatialLinesLengths(lines)
+  res <- data.frame(origin = from,
+                    perimeter = perimeters[from],
+                    touching = Touching_List[[from]],
+                    t.length = l_lines,
+                    t.pc = 100*l_lines/perimeters[from])
+  res
+})
+all.length.df <- do.call("rbind", all.length.list)
+
