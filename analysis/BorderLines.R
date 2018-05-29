@@ -15,7 +15,7 @@ europe.sp <- world.sp[world.sp@data$region_un == "Europe" & world.sp@data$sovere
 
 # Create a list that tells us whether two countries touch
 # (Code adopted from StackOverflow https://tinyurl.com/yacnowxu)
-Touching_List <- gTouches(europe.sp, byid = TRUE, returnDense = FALSE)
+Touching_List <- gTouches(europe.sp, byid = TRUE, returnDense = FALSE) # might try gIntersects
 
 # Perimeters
 perimeters <- sp::SpatialLinesLengths(as(europe.sp, "SpatialLines"))
