@@ -21,15 +21,17 @@ Touching_List <- gTouches(europe.sp, byid = TRUE, returnDense = FALSE)
 perimeters <- sp::SpatialLinesLengths(as(europe.sp, "SpatialLines"))
 
 # Loop over the Touching_List and return lines
-all.length.list <- lapply(1:length(Touching_List), function(from) {
-  lines <- rgeos::gIntersection(europe.sp[from,], europe.sp[Touching_List[[from]],], byid = TRUE)
-  l_lines <- sp::SpatialLinesLengths(lines)
+lines <- vector(mode = "list", length = length(Touching_List))
+for (from in seq_along(Touching_List)) {
+  lines[[from]] <- rgeos::gIntersection(europe.sp[from,], europe.sp[Touching_List[[from]],], byid = TRUE)
+  l_lines <- sp::SpatialLinesLengths(lines[[from]])
   res <- data.frame(origin = from,
                     perimeter = perimeters[from],
                     touching = Touching_List[[from]],
                     t.length = l_lines,
                     t.pc = 100*l_lines/perimeters[from])
   res
-})
+}
+
 all.length.df <- do.call("rbind", all.length.list)
 
