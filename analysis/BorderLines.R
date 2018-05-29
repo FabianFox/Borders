@@ -22,23 +22,35 @@ perimeters <- sp::SpatialLinesLengths(as(europe.sp, "SpatialLines"))
 
 # Loop over the Touching_List and return lines
 lines <- vector(mode = "list", length = length(Touching_List))
+result <- vector(mode = "list", length = length(Touching_List))
 for (from in seq_along(Touching_List)) {
   lines[[from]] <- rgeos::gIntersection(europe.sp[from,], europe.sp[Touching_List[[from]],], byid = TRUE)
   l_lines <- sp::SpatialLinesLengths(lines[[from]])
-  res <- data.frame(origin = from,
-                    perimeter = perimeters[from],
-                    touching = Touching_List[[from]],
-                    t.length = l_lines,
-                    t.pc = 100*l_lines/perimeters[from])
-  res
+  result[[from]] <- data.frame(origin = from,
+                                perimeter = perimeters[from],
+                                touching = Touching_List[[from]],
+                                t.length = l_lines,
+                                t.pc = 100*l_lines/perimeters[from])
 }
 
-all.length.df <- do.call("rbind", all.length.list)
+# Create data frame with information on shared borders
+# Basic data frame 
+result.df <- do.call("rbind", result)
+
+# Lookup table for matching
+lookup.cntry <- tibble(
+  number = seq_along(unique(europe.sp$sovereignt)),
+  country = unique(europe.sp$sovereignt)
+)
+
+# Lookup-match
+result.df$origin.name <- lookup.cntry[match(result.df$origin, lookup.cntry$number),]$country
+result.df$touching.name <- lookup.cntry[match(result.df$touching, lookup.cntry$number),]$country
 
 # Plotting
 # Base map
 plot(europe.sp)
 
 # Overplot with emphasized (shared) borders
-map(lines, ~plot(., add = TRUE, lwd = 2, col = 1 + 1:length(Touching_List[[1]])))
+map(lines, ~plot(., add = TRUE, lwd = 2, col = 1 + 1:length(Touching_List)))
 
