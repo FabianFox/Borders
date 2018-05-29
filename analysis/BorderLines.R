@@ -48,6 +48,7 @@ result.df$origin.name <- lookup.cntry[match(result.df$origin, lookup.cntry$numbe
 result.df$touching.name <- lookup.cntry[match(result.df$touching, lookup.cntry$number),]$country
 
 # Plotting
+# Coloring could be adjusted following: https://gis.stackexchange.com/questions/91775/coloring-spatiallines-by-attribute-in-r
 # Base map
 plot(europe.sp)
 
