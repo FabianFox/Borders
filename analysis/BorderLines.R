@@ -35,3 +35,10 @@ for (from in seq_along(Touching_List)) {
 
 all.length.df <- do.call("rbind", all.length.list)
 
+# Plotting
+# Base map
+plot(europe.sp)
+
+# Overplot with emphasized (shared) borders
+map(lines, ~plot(., add = TRUE, lwd = 2, col = 1 + 1:length(Touching_List[[1]])))
+
