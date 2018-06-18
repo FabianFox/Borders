@@ -18,7 +18,7 @@ europe.sp <- world.sp[world.sp@data$region_un == "Europe" & world.sp@data$sovere
 borders <- gDifference(
   as(europe.sp,"SpatialLines"),
   as(gUnaryUnion(europe.sp),"SpatialLines"),
-  byid=TRUE)
+  byid = TRUE)
 
 ## Test case for color plotting of borders ## 
 
