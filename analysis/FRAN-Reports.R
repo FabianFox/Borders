@@ -108,3 +108,6 @@ map2(.x = frontex.df$pdf, .y = frontex.df$dest, .f = ~{
   Sys.sleep(3)
   download.file(url = .x, destfile = .y, mode = "wb")
 })
+
+# All docs
+sum(length(dir("./FRAN-reports/"))) # yep
