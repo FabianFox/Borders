@@ -10,7 +10,9 @@ p_load(tidyverse, rvest)
 # - Frontex website 
 # Link: https://frontex.europa.eu/publications/?category=riskanalysis
 
-# Find the available reports (from EU Open Data)
+# from EU Open Data
+## ------------------------------------------------------------------------------------------------------------ ##
+# Find the available reports 
 # There are three pages with information
 
 # (1) Get individual page links
@@ -66,8 +68,43 @@ frontex.df <- frontex.df %>%
   mutate(pdf = pdf,
          dest = paste0("./FRAN-reports/", title, ".pdf")) 
 
-# (3) Download the protocols
+# (3) Download the reports
 map2(.x = frontex.df$pdf, .y = frontex.df$dest, .f = ~{
-  Sys.sleep(2.5)
+  Sys.sleep(3)
   download.file(url = .x, destfile = .y, mode = "wb")
   })
+
+# from Frontex website
+## ------------------------------------------------------------------------------------------------------------ ##
+# (1) Basic df
+info <- read_html("https://frontex.europa.eu/publications/?category=riskanalysis") %>%
+  html_nodes(".hidden-xs a")
+
+frontex.df <- tibble(
+  title = html_text(info),
+  link = paste0("https://frontex.europa.eu/",
+                html_attr(info, "href")),
+  dest = paste0("./FRAN-reports/", title, ".pdf")
+)
+
+# (2) Get URLs to pdf-docs
+pdf <- vector("character", length = length(frontex.df$link))
+
+for(i in seq_along(pdf)) {
+  pdf[[i]] <- read_html(frontex.df$link[i]) %>%
+    html_nodes(css = "#content a") %>%
+    html_attr("href") %>%
+    paste0("https://frontex.europa.eu/", .)
+  
+  Sys.sleep(sample(seq(0, 2, 0.5), 1))
+}
+
+# (3) Merge to frontex.df
+frontex.df <- frontex.df %>%
+  mutate(pdf = pdf)
+
+# (4) Download the reports
+map2(.x = frontex.df$pdf, .y = frontex.df$dest, .f = ~{
+  Sys.sleep(3)
+  download.file(url = .x, destfile = .y, mode = "wb")
+})
