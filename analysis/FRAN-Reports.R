@@ -66,8 +66,8 @@ frontex.df <- frontex.df %>%
   mutate(pdf = pdf,
          dest = paste0("./FRAN-reports/", title, ".pdf")) 
 
-# Download the protocols
-map2(.x = art_df$url, .y = art_df$dest, .f = ~{
+# (3) Download the protocols
+map2(.x = frontex.df$pdf, .y = frontex.df$dest, .f = ~{
   Sys.sleep(2.5)
   download.file(url = .x, destfile = .y, mode = "wb")
   })
