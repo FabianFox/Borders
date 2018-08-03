@@ -36,12 +36,38 @@ for(i in seq_along(pages)) {
   frontex$link[[i]] <- link %>%
     html_nodes(css = ".item_link:nth-child(3)") %>%
     html_attr(name = "href") %>%
-    paste0(pages[i], .)
+    paste0("https://data.europa.eu/euodp", .)
   
   Sys.sleep(sample(seq(0, 2, 0.5), 1))
 }
 
 # (3) Flatten
 frontex.df <- frontex %>%
-  map(unlist) 
+  map(unlist) %>%
+  as_tibble(.)
 
+# Housekeeping
+rm(list = setdiff(ls(), "frontex.df"))
+
+# Download the reports to disk
+# (1) Get the links to the pdf-docs
+pdf <- vector("character", length = length(frontex.df$link))
+
+for(i in seq_along(pdf)) {
+  pdf[[i]] <- read_html(frontex.df$link[i]) %>%
+    html_nodes(css = ".button-box") %>%
+    html_attr("href")
+  
+  Sys.sleep(sample(seq(0, 2, 0.5), 1))
+}
+
+# (2) Merge to frontex.df
+frontex.df <- frontex.df %>%
+  mutate(pdf = pdf,
+         dest = paste0("./FRAN-reports/", title, ".pdf")) 
+
+# Download the protocols
+map2(.x = art_df$url, .y = art_df$dest, .f = ~{
+  Sys.sleep(2.5)
+  download.file(url = .x, destfile = .y, mode = "wb")
+  })
