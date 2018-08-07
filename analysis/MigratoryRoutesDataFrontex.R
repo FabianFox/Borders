@@ -3,7 +3,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce)
+p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce, gganimate)
 
 # from Frontex (xlsx)
 ## ------------------------------------------------------------------------------------------------------------ ##
@@ -71,17 +71,19 @@ ggplot(data = world.sf) +
 # For the latest month
 routes.df <- routes.df %>%
   mutate(year = as.numeric(str_extract_all(date, "[:digit:]{4}"))) %>%
-  filter(year == 2018) %>%
-  group_by(Route) %>%
+  group_by(Route, year) %>%
   summarise(crossings = sum(crossings)) 
 
 # Join to the lines.df
-lines.df <- lines.df %>%
-  left_join(routes.df, by = c("route" = "Route"))
+routes.df <- routes.df %>%
+  left_join(lines.df, by = c("Route" = "route"))
 
 # Plot with linesize (only 2018)
 ggplot(data = world.sf) +
   geom_sf() +
   coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
-  geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route, size = crossings),
+  geom_bspline(data = routes.df, mapping =  aes(x = lon, y = lat, group = Route, size = crossings),
                arrow = arrow(length = unit(0.2, unit = "cm"), type = "open"))
+
+# Read up on gganimate
+# i.e. https://d4tagirl.com/2017/05/how-to-plot-animated-maps-with-gganimate
