@@ -2,13 +2,25 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rvest)
+p_load(tidyverse, rvest, rio)
 
 # The reports are available through:
 # - EU Open Data Portal (Query: Frontex Risk Analysis Network)
 # Link: https://data.europa.eu/euodp/en/data/dataset?q=Frontext+Risk+Analysis+Network&ext_boolean=all&sort=
 # - Frontex website 
-# Link: https://frontex.europa.eu/publications/?category=riskanalysis
+# Link 1 (pdf-docs): https://frontex.europa.eu/publications/?category=riskanalysis
+# Link 2 (xlsx): https://frontex.europa.eu/assets/Migratory_routes/Detections_of_IBC_2018_07_06.xlsx
+
+# Of course, the excel-sheet is the best source. However, I did only find about it after extracting the data from 
+# the pdfs. Because it is a useful example of extracting tables from pdfs, I'll keep the code. 
+
+# from Frontex (xlsx)
+## ------------------------------------------------------------------------------------------------------------ ##
+routes.df <- import(file = "https://frontex.europa.eu/assets/Migratory_routes/Detections_of_IBC_2018_07_06.xlsx",
+                    sheet = 1) %>%
+  gather()
+
+
 
 # from EU Open Data
 ## ------------------------------------------------------------------------------------------------------------ ##
@@ -74,7 +86,7 @@ map2(.x = frontex.df$pdf, .y = frontex.df$dest, .f = ~{
   download.file(url = .x, destfile = .y, mode = "wb")
   })
 
-# from Frontex website
+# from Frontex (pdf-docs)
 ## ------------------------------------------------------------------------------------------------------------ ##
 # (1) Basic df
 info <- read_html("https://frontex.europa.eu/publications/?category=riskanalysis") %>%
