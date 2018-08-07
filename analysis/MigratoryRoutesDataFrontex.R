@@ -20,9 +20,23 @@ world.sf <- ne_countries(returnclass = "sf") %>%
 # (1) Data set with empty coordinates which roughly comply with the routes provided by Frontex
 lines.df <- tibble(
   route = c(rep("Black Sea", 2),
-            rep("Central Mediterranean", 3)),
+            rep("Central Mediterranean", 3),
+            rep("Circular Route from Albania to Greece", 2), 
+            rep("Eastern Land Borders", 3),
+            rep("Eastern Mediterranean", 3),
+            rep("Other", 2),
+            rep("Western Africa", 2),
+            rep("Western Balkans", 4),
+            rep("Western Mediterranean", 4)),
   location = c("Amasra, Turkey", "Vama Veche, Romania", 
-               "Sirte, Libya", "Birbuba, Malta", "Caltanissetta, Italy"),
+               "Sirte, Libya", "Birbuba, Malta", "Caltanissetta, Italy",
+               "Tirana, Albania", "Tricca, Greece",
+               "Schytomyr, Ukraine", "Pinks, Belarus", "Warsaw, Poland",
+               "Kayseri, Turkey", "Istanbul, Turkey", "Lamia, Greece",
+               "Ponta Delgada, Portugal", "Ousseant, France",
+               "Dakhla, Western Sahara", "Santa Cruz de Tenerife, Canarias",
+               "Thessaloniki, Greece", "Skopje, Macedonia", "Pristina, Kosovo", "Belgrade, Serbia",
+               "Abadla, Algeria", "Taza, Marocco", "El Jebha, Marocco", "Madrid, Spain"),
   lon = NA,
   lat = NA
 )
@@ -41,9 +55,30 @@ for(i in 1:nrow(lines.df)) {
   Sys.sleep(sample(seq(.5, 2, 0.5), 1))  
 }
 
+# Ponte Delgada seems a little far
+# Choose random closer point in the Atlantic Sea
+lines.df[14,3] <- -12.92
+lines.df[14,4] <- 46.36
+
 # Plot
 ggplot(data = world.sf) +
   geom_sf() +
   coord_sf(xlim = c(-20, 50), ylim = c(30, 65)) +
   geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route),
-                                               arrow = arrow(length = unit(0.2, unit = "cm")))
+                                               arrow = arrow(length = unit(0.4, unit = "cm")))
+
+# Also possible to map by size of unauthorized border crossings
+# For the latest month
+routes.df <- routes.df %>%
+  filter(year == "2018-05-01")
+
+# Join to the lines.df
+lines.df <- lines.df %>%
+  left_join(routes.df, by = c("route" = "Route"))
+
+# Sum observations irrespective of origin
+lines.df <- lines.df %>%
+  group_by(route, location) %>%
+  mutate(count = n()) %>%
+  ungroup() %>%
+  distinct(route, location, .keep_all = TRUE)
