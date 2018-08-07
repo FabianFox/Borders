@@ -14,7 +14,7 @@ routes.df <- import(file = "https://frontex.europa.eu/assets/Migratory_routes/De
 
 # Base map from rnaturalearth
 world.sf <- ne_countries(returnclass = "sf") %>%
-  filter(region_wb %in% c("Europe & Central Asia", "Middle East & North Africa")) 
+  filter(region_wb %in% c("Europe & Central Asia", "Middle East & North Africa", "Sub-Saharan Africa")) 
 
 # Create a data set for the lines
 # (1) Data set with empty coordinates which roughly comply with the routes provided by Frontex
@@ -78,3 +78,10 @@ routes.df <- routes.df %>%
 # Join to the lines.df
 lines.df <- lines.df %>%
   left_join(routes.df, by = c("route" = "Route"))
+
+# Plot with linesize (only 2018)
+ggplot(data = world.sf) +
+  geom_sf() +
+  coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
+  geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route, size = crossings),
+               arrow = arrow(length = unit(0.2, unit = "cm"), type = "open"))
