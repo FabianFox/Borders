@@ -3,7 +3,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, sf, rnaturalearth, ggmap)
+p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce)
 
 # from Frontex (xlsx)
 ## ------------------------------------------------------------------------------------------------------------ ##
