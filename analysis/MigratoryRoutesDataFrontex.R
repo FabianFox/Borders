@@ -10,7 +10,7 @@ p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce)
 routes.df <- import(file = "https://frontex.europa.eu/assets/Migratory_routes/Detections_of_IBC_2018_07_06.xlsx",
                     sheet = 1) %>%
   gather(year, crossings, -c(Route, BorderLocation, NationalityLong)) %>%
-  mutate(year = as.Date(as.numeric(year), origin = "1899-12-30"))
+  mutate(date = as.Date(as.numeric(year), origin = "1899-12-30"))
 
 # Base map from rnaturalearth
 world.sf <- ne_countries(returnclass = "sf") %>%
@@ -25,7 +25,7 @@ lines.df <- tibble(
             rep("Eastern Land Borders", 3),
             rep("Eastern Mediterranean", 3),
             rep("Other", 2),
-            rep("Western Africa", 2),
+            rep("Western African", 2),
             rep("Western Balkans", 4),
             rep("Western Mediterranean", 4)),
   location = c("Amasra, Turkey", "Vama Veche, Romania", 
@@ -70,15 +70,11 @@ ggplot(data = world.sf) +
 # Also possible to map by size of unauthorized border crossings
 # For the latest month
 routes.df <- routes.df %>%
-  filter(year == "2018-05-01")
+  mutate(year = as.numeric(str_extract_all(date, "[:digit:]{4}"))) %>%
+  filter(year == 2018) %>%
+  group_by(Route) %>%
+  summarise(crossings = sum(crossings)) 
 
 # Join to the lines.df
 lines.df <- lines.df %>%
   left_join(routes.df, by = c("route" = "Route"))
-
-# Sum observations irrespective of origin
-lines.df <- lines.df %>%
-  group_by(route, location) %>%
-  mutate(count = n()) %>%
-  ungroup() %>%
-  distinct(route, location, .keep_all = TRUE)
