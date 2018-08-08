@@ -29,7 +29,7 @@ lines.df <- tibble(
             rep("Western African", 2),
             rep("Western Balkans", 4),
             rep("Western Mediterranean", 4)),
-  location = c("Amasra, Turkey", "Vama Veche, Romania", 
+  location = c("Kayseri, Turkey", "Vama Veche, Romania", 
                "Sirte, Libya", "Birbuba, Malta", "Caltanissetta, Italy",
                "Tirana, Albania", "Tricca, Greece",
                "Schytomyr, Ukraine", "Pinks, Belarus", "Warsaw, Poland",
