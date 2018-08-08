@@ -3,7 +3,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce, gganimate)
+p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce, ggrepel)
 
 # from Frontex (xlsx)
 ## ------------------------------------------------------------------------------------------------------------ ##
@@ -17,6 +17,7 @@ world.sf <- ne_countries(returnclass = "sf") %>%
   filter(region_wb %in% c("Europe & Central Asia", "Middle East & North Africa", "Sub-Saharan Africa")) 
 
 # Create a data set for the lines
+# Run only once. The saved file is available below.
 # (1) Data set with empty coordinates which roughly comply with the routes provided by Frontex
 lines.df <- tibble(
   route = c(rep("Black Sea", 2),
@@ -34,7 +35,7 @@ lines.df <- tibble(
                "Schytomyr, Ukraine", "Pinks, Belarus", "Warsaw, Poland",
                "Kayseri, Turkey", "Istanbul, Turkey", "Lamia, Greece",
                "Ponta Delgada, Portugal", "Ousseant, France",
-               "Dakhla, Western Sahara", "Santa Cruz de Tenerife, Canarias",
+               "Dakhla, Western Sahara", "Funchal, Portugal",
                "Thessaloniki, Greece", "Skopje, Macedonia", "Pristina, Kosovo", "Belgrade, Serbia",
                "Abadla, Algeria", "Taza, Marocco", "El Jebha, Marocco", "Madrid, Spain"),
   lon = NA,
@@ -57,33 +58,5 @@ for(i in 1:nrow(lines.df)) {
 
 # Ponte Delgada seems a little far
 # Choose random closer point in the Atlantic Sea
-lines.df[14,3] <- -12.92
-lines.df[14,4] <- 46.36
-
-# Plot
-ggplot(data = world.sf) +
-  geom_sf() +
-  coord_sf(xlim = c(-20, 50), ylim = c(30, 65)) +
-  geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route),
-                                               arrow = arrow(length = unit(0.4, unit = "cm")))
-
-# Also possible to map by size of unauthorized border crossings
-# For the latest month
-routes.df <- routes.df %>%
-  mutate(year = as.numeric(str_extract_all(date, "[:digit:]{4}"))) %>%
-  group_by(Route, year) %>%
-  summarise(crossings = sum(crossings)) 
-
-# Join to the lines.df
-routes.df <- routes.df %>%
-  left_join(lines.df, by = c("Route" = "route"))
-
-# Plot with linesize (only 2018)
-ggplot(data = world.sf) +
-  geom_sf() +
-  coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
-  geom_bspline(data = routes.df, mapping =  aes(x = lon, y = lat, group = Route, size = crossings),
-               arrow = arrow(length = unit(0.2, unit = "cm"), type = "open"))
-
-# Read up on gganimate
-# i.e. https://d4tagirl.com/2017/05/how-to-plot-animated-maps-with-gganimate
+lines.df[14,3] <- -12.92 # lon
+lines.df[14,4] <- 46.36 # lat
