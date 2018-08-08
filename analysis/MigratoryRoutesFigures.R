@@ -111,7 +111,6 @@ ggdraw() +
   draw_plot(routes.figs$plot[[2]], 0.65, 0.3, 0.5, 0.4, scale = 0.4) +
   draw_plot(routes.figs$plot[[4]], 0.65, 0.5, 0.5, 0.4, scale = 0.4)
   
-
 # Extension
 # Read up on gganimate
 # i.e. https://d4tagirl.com/2017/05/how-to-plot-animated-maps-with-gganimate
