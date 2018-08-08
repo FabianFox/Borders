@@ -7,39 +7,45 @@ if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce, ggrepel, cowplot)
 
 # Load data
-# Routes.df
+# (1) Routes.df
 routes.df <- import(file = "https://frontex.europa.eu/assets/Migratory_routes/Detections_of_IBC_2018_07_06.xlsx",
                     sheet = 1) %>%
   gather(year, crossings, -c(Route, BorderLocation, NationalityLong)) %>%
   mutate(date = as.Date(as.numeric(year), origin = "1899-12-30"))
 
-# Load lines.df
+# (2) lines.df
 lines.df <- readRDS("./FRAN-reports/lines.RDS")
+
+# (3) Map
+world.sf <- ne_countries(returnclass = "sf") %>%
+  filter(region_wb %in% c("Europe & Central Asia", "Middle East & North Africa", "Sub-Saharan Africa")) 
 
 # label.df 
 label.df <- tibble(
   route = c("Black Sea\nroute",
-            "Central Medi-\nterranean route",
+            "Central\nMediterranean route",
             "Circular\nRoute", 
             "Eastern\n borders route",
             "Eastern\nMediterranean route",
             "Other\nroutes",
             "Western African\nroute",
             "Western Balkan\nroute",
-            "Western Medit-\nerranean route"),
-  lon = c(32.5, 18.5, 19, 26, 29, -10, -13, 23, -0.5),
-  lat = c(43.5, 36, 40, 53, 41, 49, 31, 45, 36)
+            "Western\nMediterranean route"),
+  lon = c(32.5, 20, 18.5, 26, 29, -10, -12, 16, 1),
+  lat = c(44, 35, 39, 53.5, 38, 49, 29, 45, 36)
 )
 
 # Plot
 map.fig <- ggplot(data = world.sf) +
   geom_sf() +
   coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
-  geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route),
+  geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route), size = 1.5,
                arrow = arrow(length = unit(0.4, unit = "cm"))) +
-  geom_text(data = label.df, mapping = aes(x = lon, y = lat, label = route, hjust = "center")) +
+  geom_label(data = label.df, mapping = aes(x = lon, y = lat, label = route, hjust = "center")) +
   theme_void() +
-  theme(panel.grid.major = element_line(colour = "transparent"))
+  theme(panel.grid.major = element_line(colour = "transparent")) +
+  labs(title = "Main irregular migration routes and flows, 2009-2017",
+          caption = "Data from Frontex: https://frontex.europa.eu/along-eu-borders/migratory-map/")
 
 # Also possible to map by size of unauthorized border crossings
 # For the latest month
@@ -62,14 +68,49 @@ route.map <- ggplot(data = world.sf) +
   theme(panel.grid.minor.x = element_blank(),
         panel.grid.major.x = element_blank())
 
+lines.df[1,c(2,3,4)] <- lines.df[11,c(2,3,4)]
+
 # Facetted line plot  
 routes.fig <- ggplot(data = routes.df) +
   geom_line(aes(x = year, y = crossings, group = Route)) +
   facet_wrap(~Route) +
-  theme_minimal()
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank())
+
+# Summarize minor routes and plot multiple line graps
+routes.figs <- routes.df %>%
+  mutate(routeAGG = case_when(
+      Route %in% c("Black Sea","Circular Route from Albania to Greece",
+                   "Eastern Land Borders", "Other", "Western African", 
+                   "Western Mediterranean") ~ "Remaining routes",
+      Route == "Central Mediterranean" ~ "Central Mediterranean route",
+      Route == "Eastern Mediterranean" ~ "Eastern Mediterranean route",
+      Route == "Western Balkans" ~ "Western Balkan route"
+                   )) %>%
+  distinct(routeAGG, year, .keep_all = TRUE) %>%
+  group_by(routeAGG, year) %>%
+  summarise(crossings = sum(crossings)) %>%
+  group_by(routeAGG) %>%
+  nest() %>%
+  mutate(plot = map2(data, routeAGG, ~ggplot(data = .x) +
+                      geom_line(aes(x = year, y = crossings)) +
+                      ggtitle(.y) +
+                      ylab("") +
+                      xlab("") +
+                      coord_cartesian(ylim = c(0, 900000)) +
+                      theme_minimal() +
+                      theme(panel.grid.minor.x = element_blank(),
+                            panel.grid.major.x = element_blank())))
 
 # Combine figures
-plot_grid(map.fig, routes.fig, ncol = 1)
+ggdraw() +
+  draw_plot(map.fig, x = 0, y = 0, width = 1, height = 1) +
+  draw_plot(routes.figs$plot[[3]], -0.05, 0.3, 0.5, 0.4, scale = 0.4) +
+  draw_plot(routes.figs$plot[[1]], 0.65, 0.1, 0.5, 0.4, scale = 0.4) +
+  draw_plot(routes.figs$plot[[2]], 0.65, 0.3, 0.5, 0.4, scale = 0.4) +
+  draw_plot(routes.figs$plot[[4]], 0.65, 0.5, 0.5, 0.4, scale = 0.4)
+  
 
 # Extension
 # Read up on gganimate
