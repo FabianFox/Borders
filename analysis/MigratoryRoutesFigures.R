@@ -4,7 +4,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, sf, rnaturalearth, ggmap, ggforce, ggrepel, cowplot)
+p_load(tidyverse, rio, sf, rnaturalearth, rgeos, ggmap, ggforce, ggrepel, cowplot)
 
 # Load data
 # (1) Routes.df
@@ -16,11 +16,11 @@ routes.df <- import(file = "https://frontex.europa.eu/assets/Migratory_routes/De
 # (2) lines.df
 lines.df <- readRDS("./FRAN-reports/lines.RDS")
 
-# (3) Map
+# (3) Map: sf
 world.sf <- ne_countries(returnclass = "sf") %>%
   filter(region_wb %in% c("Europe & Central Asia", "Middle East & North Africa", "Sub-Saharan Africa")) 
 
-# label.df 
+# (4) label.df 
 label.df <- tibble(
   route = c("Black Sea\nroute",
             "Central\nMediterranean route",
@@ -35,13 +35,37 @@ label.df <- tibble(
   lat = c(44, 35, 39, 53.5, 38, 49, 29, 45, 36)
 )
 
+# Identifying shared borders in order to plot erected fences
+# Base data frame
+# based on: https://p.dw.com/p/2eoYy
+fence.df <- tibble(
+  from = c("HUN", "HUN", "SVK", "AUT", "MKD"),
+  to = c("SRB", "HRV", "HRV", "SVK", "GRC"),
+  year = c(2015, 2015, 2015, 2015, 2015)
+)
+
+# List to store the intersections
+fence <- vector(mode = "list", length(fence.df))
+
+# Create intersections
+for (i in seq_along(fence.df)) {
+  fence[[paste0(fence.df$from[i], "-", fence.df$to[i])]] <- st_intersection(
+    europe.sf[europe.sf$iso_a3 == fence.df$from[i],], europe.sf[europe.sf$iso_a3 == fence.df$to[i],]
+  )
+}
+
+# Not visible:
+# 2015
+# - BGR/TUR
+
 # Plot
 map.fig <- ggplot(data = world.sf) +
   geom_sf() +
-  coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
   geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route), size = 1.5,
                arrow = arrow(length = unit(0.4, unit = "cm"))) +
   geom_label(data = label.df, mapping = aes(x = lon, y = lat, label = route, hjust = "center")) +
+  geom_sf(data = i, fill = NA, show.legend = F, color = "red", lwd = 1) +
+  coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
   theme_void() +
   theme(panel.grid.major = element_line(colour = "transparent"),
         text = element_text(size = 14)) +
