@@ -78,6 +78,7 @@ routes.figs <- routes.df %>%
   nest() %>%
   mutate(plot = map2(data, routeAGG, ~ggplot(data = .x) +
                       geom_line(aes(x = year, y = crossings)) +
+                      geom_point(aes(x = year, y = crossings)) +
                       ggtitle(.y) +
                       ylab("") +
                       xlab("") +
