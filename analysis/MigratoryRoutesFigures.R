@@ -60,18 +60,20 @@ for (i in 1:nrow(fence.df)) {
   names(fence)[i] <- paste0(fence.df$from[i], "-", fence.df$to[i])
 }
 
-fences <- map(fence, "geometry") 
+# Create an sf object with data on fences
+fences <- map(fence, "geometry")
 fences <- fences[lengths(fences) > 0]
 fences <- map(fences, st_sf) %>%
-  bind_rows()
+  bind_rows() %>%
+  rename(geometry = .x..i..)
 
-# Plot
+# Plot (add fences)
 map.fig <- ggplot(data = world.sf) +
   geom_sf() +
   geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route), size = 1.5,
                arrow = arrow(length = unit(0.4, unit = "cm"))) +
   geom_label(data = label.df, mapping = aes(x = lon, y = lat, label = route, hjust = "center")) +
-  geom_sf(data = fences, fill = NA, show.legend = F, color = "red", lwd = 1) +
+  geom_sf(data = fences[[1]], fill = NA, show.legend = F, color = "red", lwd = 1) +
   coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
   theme_void() +
   theme(panel.grid.major = element_line(colour = "transparent"),
