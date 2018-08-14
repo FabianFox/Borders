@@ -39,24 +39,31 @@ label.df <- tibble(
 # Base data frame
 # based on: https://p.dw.com/p/2eoYy
 fence.df <- tibble(
-  from = c("HUN", "HUN", "SVK", "AUT", "MKD"),
-  to = c("SRB", "HRV", "HRV", "SVK", "GRC"),
-  year = c(2015, 2015, 2015, 2015, 2015)
+  from = c("BGR", "HUN", "HUN", "SVK", "AUT", "MKD"),
+  to = c("TUR", "SRB", "HRV", "HRV", "SVK", "GRC"),
+  year = c(2015, 2015, 2015, 2015, 2015, 2015)
 )
 
+# Spatial map of Europe
+europe.sf <- world.sf %>%
+  filter(region_wb %in% c("Europe & Central Asia"),
+         !is.na(iso_a3)) 
+
 # List to store the intersections
-fence <- vector(mode = "list", length(fence.df))
+fence <- vector(mode = "list", length = nrow(fence.df))
 
 # Create intersections
-for (i in seq_along(fence.df)) {
-  fence[[paste0(fence.df$from[i], "-", fence.df$to[i])]] <- st_intersection(
+for (i in 1:nrow(fence.df)) {
+  fence[[i]] <- st_intersection(
     europe.sf[europe.sf$iso_a3 == fence.df$from[i],], europe.sf[europe.sf$iso_a3 == fence.df$to[i],]
   )
+  names(fence)[i] <- paste0(fence.df$from[i], "-", fence.df$to[i])
 }
 
-# Not visible:
-# 2015
-# - BGR/TUR
+fences <- map(fence, "geometry") 
+fences <- fences[lengths(fences) > 0]
+fences <- map(fences, st_sf) %>%
+  bind_rows()
 
 # Plot
 map.fig <- ggplot(data = world.sf) +
@@ -64,7 +71,7 @@ map.fig <- ggplot(data = world.sf) +
   geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route), size = 1.5,
                arrow = arrow(length = unit(0.4, unit = "cm"))) +
   geom_label(data = label.df, mapping = aes(x = lon, y = lat, label = route, hjust = "center")) +
-  geom_sf(data = i, fill = NA, show.legend = F, color = "red", lwd = 1) +
+  geom_sf(data = fences, fill = NA, show.legend = F, color = "red", lwd = 1) +
   coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
   theme_void() +
   theme(panel.grid.major = element_line(colour = "transparent"),
