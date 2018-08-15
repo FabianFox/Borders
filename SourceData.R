@@ -249,3 +249,5 @@ borderlength.df <- borderlength.df %>%
 border.df <- border.df %>%
   left_join(y = borderlength.df)
 
+# Keep only the final data
+# rm(list = setdiff(ls(), "border.df"))
