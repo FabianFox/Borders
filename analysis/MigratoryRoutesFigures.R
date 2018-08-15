@@ -67,13 +67,16 @@ fences <- map(fences, st_sf) %>%
   bind_rows() %>%
   rename(geometry = .x..i..)
 
+# Set CRS
+st_crs(fences)$proj4string <- "+proj=longlat +datum=WGS84 +no_defs"
+
 # Plot (add fences)
 map.fig <- ggplot(data = world.sf) +
   geom_sf() +
   geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route), size = 1.5,
                arrow = arrow(length = unit(0.4, unit = "cm"))) +
   geom_label(data = label.df, mapping = aes(x = lon, y = lat, label = route, hjust = "center")) +
-  geom_sf(data = fences[[1]], fill = NA, show.legend = F, color = "red", lwd = 1) +
+  geom_sf(data = fences, fill = NA, show.legend = F, color = "red", lwd = 2) +
   coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
   theme_void() +
   theme(panel.grid.major = element_line(colour = "transparent"),
