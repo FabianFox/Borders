@@ -42,4 +42,5 @@ inf.count <- infringment.df %>%
   summarize(count = n()) %>%
   ggplot(aes(x = year, y = count)) +
   geom_bar(stat = "identity") +
-  facet_wrap(~country)
+  facet_wrap(~country) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5)) 
