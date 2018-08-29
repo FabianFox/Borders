@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor)
+p_load(tidyverse, rio, rvest, janitor, qdap)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -33,12 +33,13 @@ infringment.df <- map(urls, ext_table) %>%
   bind_rows() %>%
   as_tibble() %>%
   clean_names() %>%
-  remove_empty(c("rows", "cols"))
+  remove_empty(c("rows", "cols")) %>%
+  mutate_if(is.character, scrubber)
 
 # Explorative plot 
 inf.count <- infringment.df %>%
   mutate(year = str_extract(decision_date, "[:digit:]{4}(?= )")) %>%
-  group_by(country, year) %>%
+  group_by(country, year, policy) %>%
   summarize(count = n()) %>%
   ggplot(aes(x = year, y = count)) +
   geom_bar(stat = "identity") +
