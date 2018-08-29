@@ -56,3 +56,21 @@ inf.count <- infringment.df %>%
                              panel.grid.major.x = element_blank(),
                              text = element_text(size = 14),
                              axis.ticks.x = element_line(size = .5))))
+
+# Total infringment procedures by policy field
+inf.total <- infringment.df %>%
+  mutate(year = as.numeric(str_extract(decision_date, "(?<=/)[:digit:]{4}"))) %>%
+  group_by(year, policy) %>% 
+  summarise(count = n()) %>% 
+  ggplot(aes(year, count)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(~policy) +
+  ylab("") +
+  xlab("") +
+  scale_x_continuous(breaks = seq(2005, 2015, 5)) +
+  scale_y_continuous(labels = function(x) round(x, digits = 0)) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
