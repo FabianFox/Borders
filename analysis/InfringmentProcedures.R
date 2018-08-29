@@ -36,12 +36,23 @@ infringment.df <- map(urls, ext_table) %>%
   remove_empty(c("rows", "cols")) %>%
   mutate_if(is.character, scrubber)
 
-# Explorative plot 
+# Grouped by country/year - individual plots by policy
 inf.count <- infringment.df %>%
-  mutate(year = str_extract(decision_date, "[:digit:]{4}(?= )")) %>%
+  mutate(year = as.numeric(str_extract(decision_date, "(?<=/)[:digit:]{4}"))) %>%
   group_by(country, year, policy) %>%
   summarize(count = n()) %>%
-  ggplot(aes(x = year, y = count)) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~country) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5)) 
+  group_by(policy) %>%
+  nest() %>%
+  mutate(plot = map2(data, policy, ~ggplot(data = .x) +
+                       geom_bar(aes(x = year, y = count), stat = "identity") +
+                       facet_wrap(~country) +
+                       ggtitle(.y) +
+                       ylab("") +
+                       xlab("") +
+                       scale_x_continuous(breaks = seq(2005, 2015, 5)) +
+                       scale_y_continuous(labels = function(x) round(x, digits = 0)) +
+                       theme_minimal() +
+                       theme(panel.grid.minor.x = element_blank(),
+                             panel.grid.major.x = element_blank(),
+                             text = element_text(size = 14),
+                             axis.ticks.x = element_line(size = .5))))
