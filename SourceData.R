@@ -33,7 +33,7 @@ contdird <- contdird %>%
 
 # Join macro level indicators:
 # The following are added:
-# - World Bank (GDP and Population)
+# - World Bank (GDP p.c. and Population)
 # - Polity IV 
 # - Visa Network Data
 
@@ -41,7 +41,7 @@ contdird <- contdird %>%
 # (1)
 # Download data (mrv = newest available)
 wb.info <- wb(country = unique(contdird$state1),
-              indicator = c("NY.GDP.MKTP.PP.CD", "SP.POP.TOTL"), 
+              indicator = c("NY.GDP.PCAP.CD", "SP.POP.TOTL"), 
               mrv = 1, return_wide = TRUE)
 
 # (2) Match to base data
@@ -49,8 +49,8 @@ border.df <- contdird %>%
   mutate(
     state1.pop = wb.info[match(contdird$state1, wb.info$iso3c),]$SP.POP.TOTL,
     state2.pop = wb.info[match(contdird$state2, wb.info$iso3c),]$SP.POP.TOTL,
-    state1.gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$NY.GDP.MKTP.PP.CD / state1.pop,
-    state2.gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.MKTP.PP.CD / state2.pop
+    state1.gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$NY.GDP.PCAP.CD,
+    state2.gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD
   )
 
 # Polity IV
