@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap)
+p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -28,13 +28,34 @@ ext_table <- function(x) {
 # Scrape
 urls <- list(borderURL, asylumURL, returnURL)
 
+# Add additional data:
+# - number of asylum applications (eurostat)
+# ID: tps00191: Asylum and first time asylum applicants - annual aggregated data (rounded)
+# Metadata: http://ec.europa.eu/eurostat/cache/metadata/en/migr_asyapp_esms.htm
+# Further information: https://bit.ly/2LXrsKB and http://dd.eionet.europa.eu/vocabulary/eurostat/asyl_app
+
+# Clean eurostat-cache from time to time
+# clean_eurostat_cache(cache_dir = NULL)
+
+# Yearly applications of 2016 
+asylum.df <- get_eurostat("tps00191", time_format = "num", stringsAsFactors = FALSE,
+                       filters = list(asyl_app = "ASY_APP", time = 2016)) %>%
+  select(country = geo, applicants = values) %>%
+  filter(country != "EU28") %>%
+  mutate(country = countrycode(country, "eurostat", "iso3c"))
+
 # Scrape over urls and combine df
 infringment.df <- map(urls, ext_table) %>%
   bind_rows() %>%
   as_tibble() %>%
   clean_names() %>%
   remove_empty(c("rows", "cols")) %>%
-  mutate_if(is.character, scrubber)
+  mutate_if(is.character, scrubber) %>%
+  mutate(country = countrycode(country, "country.name.en", "iso3c"))
+
+# Join asylum data to the infringment.df
+infringment.df <- infringment.df %>%
+  left_join(asylum.df)
 
 # Grouped by country/year - individual plots by policy
 inf.count <- infringment.df %>%
