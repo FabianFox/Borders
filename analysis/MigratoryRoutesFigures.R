@@ -76,7 +76,7 @@ map.fig <- ggplot(data = world.sf) +
   geom_bspline(data = lines.df, mapping =  aes(x = lon, y = lat, group = route), size = 1.5,
                arrow = arrow(length = unit(0.4, unit = "cm"))) +
   geom_label(data = label.df, mapping = aes(x = lon, y = lat, label = route, hjust = "center")) +
-  geom_sf(data = fences, fill = NA, show.legend = F, color = "red", lwd = 2) +
+# geom_sf(data = fences, fill = NA, show.legend = F, color = "red", lwd = 2) +
   coord_sf(xlim = c(-20, 50), ylim = c(20, 65)) +
   theme_void() +
   theme(panel.grid.major = element_line(colour = "transparent"),
@@ -134,7 +134,7 @@ routemap.fig <- ggdraw() +
   draw_plot(routes.figs$plot[[1]], 0.63, 0.1, 0.5, 0.4, scale = 0.4) +
   draw_plot(routes.figs$plot[[2]], 0.63, 0.3, 0.5, 0.4, scale = 0.4) +
   draw_plot(routes.figs$plot[[4]], 0.63, 0.5, 0.5, 0.4, scale = 0.4)
-  
+
 # Extension
 # Read up on gganimate
 # i.e. https://d4tagirl.com/2017/05/how-to-plot-animated-maps-with-gganimate
