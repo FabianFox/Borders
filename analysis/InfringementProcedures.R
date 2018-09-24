@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode)
+p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -42,8 +42,23 @@ asylum.df <- get_eurostat("tps00191", time_format = "num", stringsAsFactors = FA
                        filters = list(asyl_app = "ASY_APP", time = 2016)) %>%
   select(country = geo, applicants = values) %>%
   filter(country != "EU28") %>%
-  mutate(country = countrycode(country, "eurostat", "iso3c")) %>%
-  arrange(desc(applicants))
+  mutate(country = countrycode(country, "eurostat", "iso3c")) 
+
+# Population in 2016 (World Bank Indicators)
+# World Bank 
+# (1)
+# Download data (mrv = newest available)
+wb.info <- wb(country = asylum.df$country,
+              indicator = "SP.POP.TOTL", 
+              startdate = 2016, enddate = 2016,
+              return_wide = TRUE) %>%
+  select(iso3c, SP.POP.TOTL)
+
+# (2) Match to base data
+asylum.df <- asylum.df %>%
+  left_join(wb.info, by = c("country" = "iso3c")) %>%
+  mutate(applicants_perc = applicants / (SP.POP.TOTL / 1000)) %>%
+  arrange(desc(applicants_perc))
 
 # Scrape over urls and combine df
 infringment.df <- map(urls, ext_table) %>%
