@@ -25,9 +25,9 @@ country <- str_remove_all(barriers.wiki$country, pattern = "and") %>%
   str_extract_all(pattern = regex(paste(codelist$country.name.en.regex, collapse = "|"), 
                                   ignore_case = TRUE))
 
-for (i in seq_along(name.dy)) {
-  name.dy[[i]] <- ifelse(length(name.dy[[i]]) < 2, country[[i]], name.dy[[i]])
-}
+#for (i in seq_along(name.dy)) {
+#  name.dy[[i]] <- ifelse(length(name.dy[[i]]) < 2, country[[i]], name.dy[[i]])
+#}
 
 # Edit some of the border walls 
 name.dy[[3]][2] <- "Malaysia"
