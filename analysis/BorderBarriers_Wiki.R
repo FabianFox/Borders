@@ -31,9 +31,9 @@ name.dy <- str_extract_all(barriers.wiki$name,
                              pattern = regex(paste(codelist$country.name.en.regex, collapse = "|"),
                                              ignore_case = TRUE))
 
-country <- str_remove_all(barriers.wiki$country, pattern = "and") %>% 
-  str_extract_all(pattern = regex(paste(codelist$country.name.en.regex, collapse = "|"), 
-                                  ignore_case = TRUE))
+country <- str_extract_all(barriers.wiki$country, 
+                           pattern = regex(paste(codelist$country.name.en.regex, collapse = "|"), 
+                                           ignore_case = TRUE))
 
 # In some cases, the variable "country" entails more information on the countries that build the wall. That is
 # the case when "name" < "country"
@@ -41,25 +41,28 @@ length.name.dy <- map_int(name.dy, length)
 length.country <- map_int(country, length)
 
 # Replace "name" with "country" when above condition is TRUE
-name.dy[which(length.name.dy < length.country)] <- country[which(length.name.dy < length.country)]
+for (i in seq_along(name.dy)) {
+  name.dy[i] <- ifelse(length.name.dy[i] < length.country[i], country[i], name.dy[i])
+}
 
-# Edit some of the border walls 
+# Those still < 2 have to be edited manually
+which(lengths(name.dy) < 2) 
+
+# Edit those borders that still do not contain valid entries.
 name.dy[[3]][2] <- "Malaysia"
-name.dy[[5]][c(1,2)] <- c("Spain", "Morocco")
-name.dy[[6]][c(1,2)] <- c("Hong Kong", "China")
-name.dy[[8]][c(1,2)] <- c("China", "North Korea")
-name.dy[[13]][c(1,2)] <- c("Spain", "Morocco")
+name.dy[[5]][2] <- "Morocco"
+name.dy[[6]][2] <- "China"
+name.dy[[13]][2] <- "Morocco"
 name.dy[[14]][2] <- "Serbia"
 name.dy[[18]][2] <- "Pakistan"
 name.dy[[19]][2] <- "Pakistan"
-name.dy[[21]][c(1,2)] <- c("North Korea", "South Korea")
-name.dy[[22]] <- country[[22]]
-name.dy[[26]][c(1,2)] <- c("Saudi Arabia", "Yemen")
-name.dy[[27]][c(1,2)] <- c("Saudi Arabia", "Iraq")
+name.dy[[21]] <- c("North Korea", "South Korea")
+name.dy[[26]] <- c("Saudi Arabia", "Yemen")
+
+# United States is coded in the wrong direction
+name.dy[[34]] <- c("United States", "Mexico")
 
 # Add dyad identifier to the table and turn into iso3c-code
 barriers.wiki <- barriers.wiki %>%
   mutate(state1 = countrycode(unlist(map(name.dy, 1)), "country.name", "iso3c"),
          state2 = countrycode(unlist(map(name.dy, 2)), "country.name", "iso3c"))
-
-# Note: Variable "country" identifies direction of the border barrier
