@@ -6,6 +6,16 @@
 if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, rvest, countrycode, qdap)
 
+# Note: Unfortunately, some operations are specific to the current table. Once the table is altered, we have to 
+#       check whether the script (name replacement) is still valid. 
+#       The latest date was "7 October 2018" and the table had 36 entries.
+
+# Get the last edit:
+read_html("https://en.wikipedia.org/wiki/Border_barrier") %>%
+  html_nodes("#footer-info-lastmod") %>%
+  html_text() %>%
+  print()
+  
 # (1) Scrape the first table (current border barriers)
 # (2) Append data on planned/currently constructed barriers (unstructured text)
 
@@ -25,9 +35,13 @@ country <- str_remove_all(barriers.wiki$country, pattern = "and") %>%
   str_extract_all(pattern = regex(paste(codelist$country.name.en.regex, collapse = "|"), 
                                   ignore_case = TRUE))
 
-#for (i in seq_along(name.dy)) {
-#  name.dy[[i]] <- ifelse(length(name.dy[[i]]) < 2, country[[i]], name.dy[[i]])
-#}
+# In some cases, the variable "country" entails more information on the countries that build the wall. That is
+# the case when "name" < "country"
+length.name.dy <- map_int(name.dy, length)
+length.country <- map_int(country, length)
+
+# Replace "name" with "country" when above condition is TRUE
+name.dy[which(length.name.dy < length.country)] <- country[which(length.name.dy < length.country)]
 
 # Edit some of the border walls 
 name.dy[[3]][2] <- "Malaysia"
