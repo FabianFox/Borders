@@ -24,7 +24,7 @@ read_html("https://en.wikipedia.org/wiki/Border_barrier") %>%
 barriers.wiki <- read_html("https://en.wikipedia.org/wiki/Border_barrier") %>%
   html_table(".wikitable", header = TRUE, dec = ",", fill = TRUE) %>%
   .[[1]] %>%
-  set_names(c("name", "country", "built", "length", "type"))
+  set_names(c("name", "country", "year", "length", "type"))
 
 # Extract country names using countrycode::codelist for matching
 name.dy <- str_extract_all(barriers.wiki$name, 
@@ -64,5 +64,8 @@ name.dy[[34]] <- c("United States", "Mexico")
 
 # Add dyad identifier to the table and turn into iso3c-code
 barriers.wiki <- barriers.wiki %>%
-  mutate(state1 = countrycode(unlist(map(name.dy, 1)), "country.name", "iso3c"),
-         state2 = countrycode(unlist(map(name.dy, 2)), "country.name", "iso3c"))
+  mutate(country1 = countrycode(unlist(map(name.dy, 1)), "country.name", "country.name"),
+         country2 = countrycode(unlist(map(name.dy, 2)), "country.name", "country.name"),
+         state1 = countrycode(country1, "country.name", "iso3c"),
+         state2 = countrycode(country1, "country.name", "iso3c")) %>%
+  select(year, country1, country2, state1, state2)
