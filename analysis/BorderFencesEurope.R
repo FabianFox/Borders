@@ -23,4 +23,4 @@ p_load(tidyverse)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
-EUwalls <- read.csv("./data/Zaeune_Mauern_Europa.csv", sep = ";", stringsAsFactors = FALSE, na = "")
+EUwalls <- read.csv("./data/EU-Walls.csv", sep = ";", stringsAsFactors = FALSE, na = "")
