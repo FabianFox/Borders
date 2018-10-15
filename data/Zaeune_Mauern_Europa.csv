@@ -1,35 +1,35 @@
-Country I;Country II;Begin Construction;Length (km);Characteristics;Source
-AUT;SVN;;3,70;Fence;Deutsche Welle
-AUT;SVN;;;;Washington Post
-AUT;SVN;;;;Financial Times
-BGR;TUR;;33+130;;Deutsche Welle
-BGR;TUR;;;;Washington Post
-BGR;TUR;2014;176;Barbed wire;Financial Times
-BGR;TUR;Jan 14;160;Fence;New York Times
-ESP;MAR;;;Fence;Washington Post
-ESP;MAR;;;;Deutsche Welle
-ESP;MAR;1995;10+10;"""High-tech fence""";Financial Times
-EST;RUS;;;;Deutsche Welle
-EST;RUS;2018;110;Barbed wire;Washington Post
-FRA;/;;;;Deutsche Welle
-FRA;/;;;Barbed wire;Washington Post
-FRA;/;2016;1;Wall;Financial Times
-GRC;TUR;2012;12;Barbed wire / Electrified;Reuters
-GRC;TUR;;;Fence;Washington Post
-GRC;TUR;2012;11;Barbed wire;Financial Times
-GRC;TUR;2012;;Fence;New York Times
-HUN;SRB;14.09.2015;175;Barbed wire;DeutscheWelle
-HUN;HRV;18.09.2015;;Barrier fence;Deutsche Welle
-HUN;SRB;;109;Barbed wire;Washington Post
-HUN;SRB;"Sep 2015; 2017";175;Fence, 4m-high;Financial Times
-HUN;HRV;Okt 15;;;Financial Times
-HUN;HRV;2015;348;Barbed wire;New York Times
-HUN;SRB;2015;175;Barbed wire;New York Times
-LTU;BLR;;;;Deutsche Welle
-LVA;RUS;;;;Deutsche Welle
-MKD;GRC;29.11.2015;;Barbed wire;Deutsche Welle
-MKD;GRC;;;;Financial Times
-SVN;HRV;11.11.2015;;Fence;Deutsche Welle
-SVN;HRV;;;;Washington Post
-SVN;HRV;;;;Financial Times
-UKR;RUS;;1930;;Washington Post
+Country I;Country II;Begin Construction;Length (km);Characteristics;Source;;;
+AUT;SVN;;3,7;Fence;Deutsche Welle;;;
+AUT;SVN;;;;Washington Post;;;
+AUT;SVN;;;;Financial Times;;;
+BGR;TUR;;33+130;;Deutsche Welle;;;
+BGR;TUR;;;;Washington Post;;;
+BGR;TUR;2014;176;Barbed wire;Financial Times;;;
+BGR;TUR;2005;160;Fence;New York Times;;;
+ESP;MAR;;;Fence;Washington Post;;;
+ESP;MAR;;;;Deutsche Welle;;;
+ESP;MAR;1995;10+10;"""High-tech fence""";Financial Times;;;
+EST;RUS;;;;Deutsche Welle;;;
+EST;RUS;2018;110;Barbed wire;Washington Post;;;
+FRA;/;;;;Deutsche Welle;;;
+FRA;/;;;Barbed wire;Washington Post;;;
+FRA;/;2016;1;Wall;Financial Times;;;
+GRC;TUR;2012;12;Barbed wire / Electrified;Reuters;;;
+GRC;TUR;;;Fence;Washington Post;;;
+GRC;TUR;2012;11;Barbed wire;Financial Times;;;
+GRC;TUR;2012;;Fence;New York Times;;;
+HUN;SRB;2015;175;Barbed wire;DeutscheWelle;;;
+HUN;HRV;2015;;Barrier fence;Deutsche Welle;;;
+HUN;SRB;;109;Barbed wire;Washington Post;;;
+HUN;SRB;2015;175;Fence, 4m-high;Financial Times;;;
+HUN;HRV;2015;;;Financial Times;;;
+HUN;HRV;2015;348;Barbed wire;New York Times;;;
+HUN;SRB;2015;175;Barbed wire;New York Times;;;
+LTU;BLR;;;;Deutsche Welle;;;
+LVA;RUS;;;;Deutsche Welle;;;
+MKD;GRC;2015;;Barbed wire;Deutsche Welle;;;
+MKD;GRC;;;;Financial Times;;;
+SVN;HRV;2015;;Fence;Deutsche Welle;;;
+SVN;HRV;;;;Washington Post;;;
+SVN;HRV;;;;Financial Times;;;
+UKR;RUS;;1930;;Washington Post;;;
