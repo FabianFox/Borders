@@ -1,6 +1,8 @@
 # Replication data from Hassner/Wittenberg (2015)
 # 
-# Data from: Jones, Reece (2012) Border Walls: Security and the War on Terror, London: Zed Books, p. 10.
+# Data from: 
+# https://www.mitpressjournals.org/doi/10.1162/ISEC_a_00206
+# https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/U16NEI
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
