@@ -67,9 +67,10 @@ barriers.wiki <- barriers.wiki %>%
   mutate(country1 = countrycode(unlist(map(name.dy, 1)), "country.name", "country.name"),
          country2 = countrycode(unlist(map(name.dy, 2)), "country.name", "country.name"),
          state1 = countrycode(country1, "country.name", "iso3c"),
-         state2 = countrycode(country1, "country.name", "iso3c"),
-         indicator = "fortified") %>%
-  select(year, country1, country2, state1, state2, indicator)
+         state2 = countrycode(country2, "country.name", "iso3c"),
+         indicator = "fortified",
+         source = "Wikipedia") %>%
+  select(year, country1, country2, state1, state2, indicator, source)
 
 # Remove auxiliary objects
 rm(i, length.country, length.name.dy, name.dy, country)
