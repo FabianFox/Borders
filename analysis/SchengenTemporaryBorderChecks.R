@@ -11,7 +11,9 @@ p_load(tidyverse, rvest, qdap, rio, tidyr, stringr)
 loc <- "./FRAN-reports/Member States' Notifications of Reintroduction of border control.xlsx"
 
 # Load the data
-bcontrol.df <- import(loc)[1:101,]
+bcontrol.df <- import(loc)[2:96,] %>%
+  set_names(bcontrol.df[1,]) %>%
+  .[-1,]
 
 # Seperate dates 
 year_duration <- str_extract_all(bcontrol.df$Duration, "[:digit:]{4}")
@@ -25,9 +27,6 @@ bcontrol.df <- bcontrol.df %>%
   arrange(NB) %>%
   mutate(Begin = unlist(Begin),
          End = unlist(End))
-
-# Correct OCR mistake in line 86
-bcontrol.df[which(bcontrol.df$Begin == 4008), c("Duration", "Begin", "End")] <- c("27/09/2009", 2009, 2009)
 
 # By now excluding some events concerning security issues
 bcontrol.df <- bcontrol.df %>%
