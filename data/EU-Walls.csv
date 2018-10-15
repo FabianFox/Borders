@@ -1,12 +1,12 @@
-state1;state2;begin;type;reason
-AUT;SVN;2015;fortified;migration
-AUT;ITA;2016;fortified;migration
-BGR;TUR;2014;fortified;migration
-ESP;MAR;1995;fortified;migration
-EST;RUS;2018;fortified;security
-GRC;TUR;2012;fortified;migration
-HUN;SRB;2015;fortified;migration
-HUN;HRV;2015;fortified;migration
-LVA;RUS;2015;fortified;security
-MKD;GRC;2015;fortified;migration
-SVN;HRV;2015;fortified;migration
+state1;state2;begin;type;reason;length;status;source
+AUT;SVN;2015;fortified;migration;3.7;;DW
+AUT;ITA;2016;fortified;migration;0.37;check;Reuters
+BGR;TUR;2014;fortified;migration;163;;DW
+ESP;MAR;1995;fortified;migration;20;;FT
+EST;RUS;2018;fortified;security;112;check;WP
+GRC;TUR;2012;fortified;migration;11;;FT
+HUN;SRB;2015;fortified;migration;175;;DW
+HUN;HRV;2015;fortified;migration;41;;DW
+LVA;RUS;2015;fortified;security;92;check;Baltic Times
+MKD;GRC;2015;fortified;migration;30;check;Wikipedia
+SVN;HRV;2015;fortified;migration;;check;
