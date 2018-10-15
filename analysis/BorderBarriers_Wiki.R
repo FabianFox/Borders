@@ -69,3 +69,6 @@ barriers.wiki <- barriers.wiki %>%
          state1 = countrycode(country1, "country.name", "iso3c"),
          state2 = countrycode(country1, "country.name", "iso3c")) %>%
   select(year, country1, country2, state1, state2)
+
+# Remove auxiliary objects
+rm(i, length.country, length.name.dy, name.dy, country)
