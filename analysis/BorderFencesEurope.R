@@ -32,4 +32,11 @@ p_load(tidyverse)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
+# Load data
 EUwalls <- read.csv("./data/EU-Walls.csv", sep = ";", stringsAsFactors = FALSE, na = "")
+
+# Basic description
+EUwalls %>%
+  filter(begin >= 2015 & reason == "migration") %>%
+  group_by(state1) %>%
+  summarise(sum(length, na.rm = TRUE))
