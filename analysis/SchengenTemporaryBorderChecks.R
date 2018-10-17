@@ -12,7 +12,7 @@ loc <- "./FRAN-reports/Member States' Notifications of Reintroduction of border 
 
 # Load the data
 bcontrol.df <- import(loc)[2:96,] %>%
-  set_names(bcontrol.df[1,]) %>%
+  setNames(.[1,]) %>%
   .[-1,]
 
 # Seperate dates 
@@ -23,10 +23,11 @@ bcontrol.df <- bcontrol.df %>%
   mutate(Begin = map(year_duration, 1),
          End = map(year_duration, 2),
          End = if_else(lengths(year_duration) == 1, Begin, End),
-         NB = as.numeric(NB)) %>%
-  arrange(NB) %>%
-  mutate(Begin = unlist(Begin),
+         Begin = unlist(Begin),
          End = unlist(End))
+
+# Correct a parsing problem 
+bcontrol.df[which(bcontrol.df$Begin == "4008"), c("Begin", "End")] <- c("2009", "2009")
 
 # By now excluding some events concerning security issues
 bcontrol.df <- bcontrol.df %>%
@@ -41,6 +42,15 @@ bcontrol.plot.df <- bcontrol.df %>%
   group_by(Begin, migration) %>%
   distinct(`Member State`, Begin, migration, .keep_all = TRUE) %>%
   summarize(checks = n())
+
+# Also by individual Member States
+bcontrol.member.df <-
+  bcontrol.df %>%
+  filter(Begin >= 2015, migration == "Migration") %>%
+  group_by(`Member State`) %>%
+  distinct(`Member State`, Begin, .keep_all = TRUE) %>%
+  summarize(checks = n()) %>%
+  arrange(desc(checks))
 
 # Plot of border checks by year and type
 # Note: States can reinstate border checks several times per year. Here, each type is counted only once
