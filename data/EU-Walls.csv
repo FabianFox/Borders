@@ -1,12 +1,13 @@
-state1;state2;begin;type;reason;length;status;source
-AUT;SVN;2015;fortified;migration;3.7;;DW
-AUT;ITA;2016;fortified;migration;0.37;check;Reuters
-BGR;TUR;2014;fortified;migration;163;;DW
-ESP;MAR;1995;fortified;migration;20;;FT
-EST;RUS;2018;fortified;security;112;check;WP
-GRC;TUR;2012;fortified;migration;11;;FT
-HUN;SRB;2015;fortified;migration;175;;DW
-HUN;HRV;2015;fortified;migration;41;;DW
-LVA;RUS;2015;fortified;security;92;check;Baltic Times
-MKD;GRC;2015;fortified;migration;30;check;Wikipedia
-SVN;HRV;2015;fortified;migration;;check;
+state1;state2;begin;completion;type;reason;length;status;source;Link;
+AUT;SVN;2015;2015;fortified;migration;3.7;checked;DW (2015);https://www.dw.com/en/austria-begins-erecting-fence-on-border-with-slovenia/a-18900764;
+AUT;ITA;2016;NA;fortified;migration;0.37;checked;Reuters (2016);https://www.reuters.com/article/us-europe-migrants-brenner-idUSKCN0XO1HS;
+AUT;HUN;2016;NA;fortified;migration;1.8;checked;Reuters (2016);https://www.reuters.com/article/us-europe-migrants-austria/austria-lays-groundwork-for-hungarian-border-fence-idUSKCN11Q0R0;
+BGR;TUR;2014;2016;fortified;migration;146;checked;"NYT (2015); BBC (2016)";https://www.nytimes.com/2015/04/06/world/europe/bulgaria-puts-up-a-new-wall-but-this-one-keeps-people-out.html;https://www.bbc.com/news/world-europe-36435420
+ESP;MAR;1995;NA;fortified;migration;20;;FT (2017);https://www.ft.com/content/9d4d10cc-0e28-11e7-b030-768954394623;
+EST;RUS;2015;NA;fortified;security;112;;RFE (2015);https://www.rferl.org/a/estonia-fence-russia/27212586.html;
+GRC;TUR;2011;2012;fortified;migration;12;checked;"HP (2016); Reuters (2016)";https://www.huffingtonpost.com/entry/greece-turkey-border-fence_us_55f9ab73e4b0d6492d63ec12;https://www.reuters.com/article/us-europe-migrants-fences-insight/how-europe-built-fences-to-keep-people-out-idUSKCN0X10U7
+HUN;SRB;2015;2015;fortified;migration;175;checked;"DW (2017); WP (2015)";https://www.dw.com/de/europa-chronik-einer-abschottung/a-39280160;https://www.washingtonpost.com/news/worldviews/wp/2015/08/28/map-the-walls-europe-is-building-to-keep-people-out/?noredirect=on&utm_term=.d38e767d5c36
+HUN;HRV;2015;2015;fortified;migration;329;checked;"DW (2015); Telegraph (2015)";https://www.dw.com/en/hungary-starts-building-fence-on-croatian-border/a-18721670;https://www.telegraph.co.uk/news/worldnews/europe/hungary/11934232/Refugee-crisis-Hungary-completes-fence-with-Croatia-border-to-stem-daily-influx-of-migrants.html
+LVA;RUS;2015;-2019;fortified;security;23;checked;Baltic Times;https://www.baltictimes.com/fence_stretching_23-km_already_up_on_latvia-russia_border/;
+MKD;GRC;2015;2016;fortified;migration;30;checked;Wikipedia (2018);https://en.wikipedia.org/wiki/Macedonian_border_barrier#cite_note-dailymail_March_6,_2016-2;
+SVN;HRV;2016;2016;fortified;migration;27.5;;Balkan Insight (2016);http://www.balkaninsight.com/en/article/slovenian-migrant-border-fence-could-lead-to-violence-10-24-2016;
