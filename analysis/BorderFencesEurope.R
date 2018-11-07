@@ -31,6 +31,6 @@ EUwalls <- read.csv("./data/EU-Walls.csv", sep = ";", stringsAsFactors = FALSE, 
 
 # Basic description
 EUwalls %>%
-  filter(begin >= 2015 & reason == "migration") %>%
+  filter(begin >= 2010 & reason == "migration") %>%
   group_by(state1) %>%
   summarise(sum(length, na.rm = TRUE))
