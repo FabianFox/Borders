@@ -22,15 +22,16 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse)
+p_load(tidyverse, rio)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
 # Load data
-EUwalls <- read.csv("./data/EU-Walls.csv", sep = ";", stringsAsFactors = FALSE, na = "")
+EUwalls <- import("./data/EU-Walls.xlsx") %>%
+  mutate(length = as.numeric(length))
 
 # Basic description
-EUwalls %>%
+walls.df <- EUwalls %>%
   filter(begin >= 2010 & reason == "migration") %>%
-  group_by(state1) %>%
-  summarise(sum(length, na.rm = TRUE))
+  group_by(begin) %>%
+  summarise(length = sum(length), n = n())
