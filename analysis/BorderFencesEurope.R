@@ -22,7 +22,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio)
+p_load(tidyverse, rio, cowplot)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -32,6 +32,33 @@ EUwalls <- import("./data/EU-Walls.xlsx") %>%
 
 # Basic description
 walls.df <- EUwalls %>%
-  filter(begin >= 2010 & reason == "migration") %>%
+  filter(begin >= 2010 & reason == "migration",
+         state1 != "MKD") %>%
   group_by(begin) %>%
   summarise(length = sum(length), n = n())
+
+# Plot number of fences and length
+nfence <- ggplot(walls.df, aes(x = begin, y = n)) +
+  geom_bar(stat = "identity") +
+  ylab("") +
+  xlab("") +
+  scale_x_continuous(breaks = seq(2010, 2016, 1)) + 
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
+
+lfence <- ggplot(walls.df, aes(x = begin, y = length)) +
+  geom_line() +
+  ylab("") +
+  xlab("") +
+  scale_x_continuous(breaks = seq(2010, 2016, 1)) + 
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
+
+# Arrange plots
+plot_grid(lfence, nfence, nrow = 2, align = "v")
