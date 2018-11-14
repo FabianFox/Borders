@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats)
+p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -79,7 +79,12 @@ infringement.join <- infringement.df %>%
 
 # Join asylum data to the infringement.df
 asylum.df<- asylum.df %>%
-  left_join(infringement.join)
+  left_join(infringement.join) %>%
+  mutate(lawsuits = ifelse(is.na(lawsuits), 0, lawsuits))
+
+# ParlGov data [JUST STARTED ADDING]
+parlgov.df <- import("http://www.parlgov.org/static/data/development-cp1252/view_cabinet.csv") %>%
+  mutate_at(c("election_date", "start_date"), as_date)
 
 # Visualizations using the "full" infringement data set
 # Grouped by country/year - individual plots by policy
