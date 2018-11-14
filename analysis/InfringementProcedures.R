@@ -1,4 +1,4 @@
-# EU Infringment Procedures: Asylum
+# EU Infrinegment Procedures: Asylum
 
 # Data from: 
 # https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/
@@ -37,10 +37,10 @@ urls <- list(borderURL, asylumURL, returnURL)
 # Clean eurostat-cache from time to time
 # clean_eurostat_cache(cache_dir = NULL)
 
-# Yearly applications of 2016 
+# Yearly applications from 2015 - 2017
 asylum.df <- get_eurostat("tps00191", time_format = "num", stringsAsFactors = FALSE,
-                       filters = list(asyl_app = "ASY_APP", time = 2016)) %>%
-  select(country = geo, applicants = values) %>%
+                       filters = list(asyl_app = "ASY_APP", time = 2015:2017)) %>%
+  select(country = geo, applicants = values, year = time) %>%
   filter(country != "EU28") %>%
   mutate(country = countrycode(country, "eurostat", "iso3c")) 
 
@@ -50,32 +50,40 @@ asylum.df <- get_eurostat("tps00191", time_format = "num", stringsAsFactors = FA
 # Download data (mrv = newest available)
 wb.info <- wb(country = asylum.df$country,
               indicator = "SP.POP.TOTL", 
-              startdate = 2016, enddate = 2016,
+              startdate = 2015, enddate = 2017,
               return_wide = TRUE) %>%
-  select(iso3c, SP.POP.TOTL)
+  select(iso3c, population = SP.POP.TOTL, year = date) %>%
+  mutate(year = as.numeric(year))
 
 # (2) Match to base data
 asylum.df <- asylum.df %>%
-  left_join(wb.info, by = c("country" = "iso3c")) %>%
-  mutate(applicants_perc = applicants / (SP.POP.TOTL / 1000)) %>%
-  arrange(desc(applicants_perc))
+  left_join(wb.info, by = c("country" = "iso3c", "year")) %>%
+  mutate(applicants_perc = applicants / (population / 1000)) 
 
 # Scrape over urls and combine df
-infringment.df <- map(urls, ext_table) %>%
+infringement.df <- map(urls, ext_table) %>%
   bind_rows() %>%
   as_tibble() %>%
   clean_names() %>%
   remove_empty(c("rows", "cols")) %>%
   mutate_if(is.character, scrubber) %>%
-  mutate(country = countrycode(country, "country.name.en", "iso3c"))
+  mutate(country = countrycode(country, "country.name.en", "iso3c"),
+         year = as.numeric(str_extract(decision_date, "(?<=/)[:digit:]{4}")))
 
-# Join asylum data to the infringment.df
-infringment.df <- infringment.df %>%
+# Infringment cleaned for join (policy field is disregarded here, i.e. doesn't matter whether infringement is due to 
+# Border Management, Asylum or Return Policies)
+infringement.join <- infringement.df %>%
+  select(country, year) %>%
+  group_by(country, year) %>%
+  summarize(lawsuits = n())
+
+# Join asylum data to the infringement.df
+infringement.df <- infringement.df %>%
   left_join(asylum.df)
 
+# Visualizations using the "full" infringement data set
 # Grouped by country/year - individual plots by policy
-inf.count <- infringment.df %>%
-  mutate(year = as.numeric(str_extract(decision_date, "(?<=/)[:digit:]{4}"))) %>%
+inf.count <- infringement.df %>%
   group_by(country, year, policy) %>%
   summarize(count = n()) %>%
   group_by(policy) %>%
@@ -95,8 +103,7 @@ inf.count <- infringment.df %>%
                              axis.ticks.x = element_line(size = .5))))
 
 # Total infringment procedures by policy field
-inf.total <- infringment.df %>%
-  mutate(year = as.numeric(str_extract(decision_date, "(?<=/)[:digit:]{4}"))) %>%
+inf.total <- infringement.df %>%
   group_by(year, policy) %>% 
   summarise(count = n()) %>% 
   ggplot(aes(year, count)) + 
