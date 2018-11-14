@@ -57,12 +57,12 @@ bcontrol.member.df <-
 #       per year. 
 bcontrol.plot <- ggplot(bcontrol.plot.df) +
   geom_bar(aes(x = Begin, y = checks, fill = migration), stat = "identity") +
-  labs(title = "Number of temporary border checks, 2006 - 2017",
-       caption = "Source: European Commission: Migration and Home Affairs.    \nNote: Each type of border check is only counted once per year.",
+  labs(title = "Number of temporary border controls, 2006 - 2017",
+       caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
        x = "", y = "") +
   scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0,10)) +
   scale_x_continuous(breaks = seq(2006, 2018, 4)) +
-  scale_fill_manual("Reason", values = c("Migration" = "grey50", "Other" = "gray15")) +
+  scale_fill_manual("Reason", values = c("Migration" = "#CCCCCC", "Other" = "#4D4D4D")) +
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank(),
         panel.grid.major.x = element_blank(),
