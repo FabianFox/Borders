@@ -93,9 +93,11 @@ election.df <- import("http://www.parlgov.org/static/data/development-cp1252/vie
   group_by(country_name_short, round_year) %>%      
   filter(duplicated(country_name_short) | n() == 1) # Need to figure out how this works.
 
+# Which country-years have an exact match?
 test.df <- asylum.df %>%
   left_join(election.df, by = c("country" = "country_name_short", "year" = "round_year"))
 
+# Which ones don't
 anti.election.df <- election.df %>%
   anti_join(asylum.df, by = c("country_name_short" = "country", "round_year" = "year"))
 
