@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate, fuzzyjoin)
+p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate, padr)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -82,8 +82,8 @@ asylum.df <- asylum.df %>%
   left_join(infringement.join) %>%
   mutate(lawsuits = ifelse(is.na(lawsuits), 0, lawsuits))
 
-# ParlGov data
-election.df <- import("http://www.parlgov.org/static/data/development-cp1252/view_election.csv") %>%
+# ParlGov data (http://www.parlgov.org/, accessed: 15.11.2018)
+election.df <- import("./FRAN-reports/view_election.csv") %>%
   mutate(election_date = as_date(election_date)) %>%
   filter(between(year(election_date), 2010, 2017), country_name_short %in% unique(asylum.df$country),
          election_type == "parliament") %>%
@@ -93,26 +93,35 @@ election.df <- import("http://www.parlgov.org/static/data/development-cp1252/vie
   group_by(country_name_short, round_year) %>%      
   filter(duplicated(country_name_short) | n() == 1) # Need to figure out how this works.
 
-# Which country-years have an exact match?
-test.df <- asylum.df %>%
+# DOESN'T REALLY WORK YET ::::: READ UP ON ROLLING JOINS
+
+# Matching procedure
+# (1) Exact matching
+asylum.df <- asylum.df %>%
   left_join(election.df, by = c("country" = "country_name_short", "year" = "round_year"))
 
-# Which ones don't
+# (2) Delete rows that matched exactly
 anti.election.df <- election.df %>%
-  anti_join(asylum.df, by = c("country_name_short" = "country", "round_year" = "year"))
+  anti_join(asylum.df, by = c("country_name_short" = "country", "round_year" = "year")) %>%
+  group_by(country_name_short) %>%
+  slice(which.max(round_year)) %>%
+  select(country_name_short, right_share, election_date)
 
-test.df <- asylum.df %>% 
-  rowwise() %>% 
-  mutate(s = list(election.df %>% filter(round_year <= year, country_name_short == country))) %>% 
-  # unnest list column
-  tidyr::unnest() %>%
-  select(1:9) %>%
-  group_by(country, year) %>%      
-  filter(duplicated(year) | n() == 1)
+# (3) Match previous election results for remaining countries
+# Share of "right wing"-parties
+asylum.df$right_share <- ifelse(
+  is.na(asylum.df$right_share),
+  anti.election.df[match(asylum.df$country, anti.election.df$country_name_short),]$right_share,
+  asylum.df$right_share)
 
-# Join to asylum.df
-DB.final <- asylum.df %>%
-  difference_left_join(election.df, by = c("country" = "country_name_short", "year" = "round_year"), match_dist == 2)
+# Election date
+asylum.df$election_date <- ifelse(
+  is.na(asylum.df$election_date),
+  anti.election.df[match(asylum.df$country, anti.election.df$country_name_short),]$election_date,
+  asylum.df$election_date)
+
+asylum.df <- asylum.df %>%
+  mutate(election_date = as_date(election_date))
 
 # Visualizations using the "full" infringement data set
 # Grouped by country/year - individual plots by policy
