@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate)
+p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate, fuzzyjoin)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -78,13 +78,39 @@ infringement.join <- infringement.df %>%
   summarize(lawsuits = n())
 
 # Join asylum data to the infringement.df
-asylum.df<- asylum.df %>%
+asylum.df <- asylum.df %>%
   left_join(infringement.join) %>%
   mutate(lawsuits = ifelse(is.na(lawsuits), 0, lawsuits))
 
-# ParlGov data [JUST STARTED ADDING]
-parlgov.df <- import("http://www.parlgov.org/static/data/development-cp1252/view_cabinet.csv") %>%
-  mutate_at(c("election_date", "start_date"), as_date)
+# ParlGov data
+election.df <- import("http://www.parlgov.org/static/data/development-cp1252/view_election.csv") %>%
+  mutate(election_date = as_date(election_date)) %>%
+  filter(between(year(election_date), 2010, 2017), country_name_short %in% unique(asylum.df$country),
+         election_type == "parliament") %>%
+  group_by(country_name_short, election_date) %>%
+  summarize(right_share = sum(vote_share[left_right > 8], na.rm = T)) %>%
+  mutate(round_year = year(round_date(election_date))) %>%
+  group_by(country_name_short, round_year) %>%      
+  filter(duplicated(country_name_short) | n() == 1) # Need to figure out how this works.
+
+test.df <- asylum.df %>%
+  left_join(election.df, by = c("country" = "country_name_short", "year" = "round_year"))
+
+anti.election.df <- election.df %>%
+  anti_join(asylum.df, by = c("country_name_short" = "country", "round_year" = "year"))
+
+test.df <- asylum.df %>% 
+  rowwise() %>% 
+  mutate(s = list(election.df %>% filter(round_year <= year, country_name_short == country))) %>% 
+  # unnest list column
+  tidyr::unnest() %>%
+  select(1:9) %>%
+  group_by(country, year) %>%      
+  filter(duplicated(year) | n() == 1)
+
+# Join to asylum.df
+DB.final <- asylum.df %>%
+  difference_left_join(election.df, by = c("country" = "country_name_short", "year" = "round_year"), match_dist == 2)
 
 # Visualizations using the "full" infringement data set
 # Grouped by country/year - individual plots by policy
