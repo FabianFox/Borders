@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rvest, qdap, rio, tidyr, stringr)
+p_load(tidyverse, rvest, qdap, rio, tidyr, stringr, countrycode)
 
 # Location of file
 loc <- "./FRAN-reports/Member States' Notifications of Reintroduction of border control.xlsx"
@@ -31,19 +31,21 @@ bcontrol.df[which(bcontrol.df$Begin == "4008"), c("Begin", "End")] <- c("2009", 
 
 # By now excluding some events concerning security issues
 bcontrol.df <- bcontrol.df %>%
-  mutate(migration = case_when(
-    str_detect(tolower(`Reasons/Scope`), "migration|migrant|migratory|influx|recommendation|movements") == TRUE ~ "Migration",
-    str_detect(tolower(`Reasons/Scope`), "migration|migrant|migratory|influx|recommendation|movements") == FALSE ~ "Other"),
+  mutate(
+    migration = case_when(
+      str_detect(tolower(`Reasons/Scope`), "migration|migrant|migratory|influx|recommendation|movements") == TRUE ~ "Migration",
+      str_detect(tolower(`Reasons/Scope`), "migration|migrant|migratory|influx|recommendation|movements") == FALSE ~ "Other"),
+    country = countrycode(`Member State`, "country.name.en", "iso3c"),
     Begin = as.numeric(Begin),
     End = as.numeric(End))
 
-# Prepare the data frame for plotting
+# Prepare the data frame for plotting (general number of temporary border controls)
 bcontrol.plot.df <- bcontrol.df %>%
   group_by(Begin, migration) %>%
   distinct(`Member State`, Begin, migration, .keep_all = TRUE) %>%
   summarize(checks = n())
 
-# Also by individual Member States
+# By individual Member States
 bcontrol.member.df <-
   bcontrol.df %>%
   filter(Begin >= 2015, migration == "Migration") %>%
@@ -70,3 +72,4 @@ bcontrol.plot <- ggplot(bcontrol.plot.df) +
         axis.ticks.x = element_line(size = .5))
 
 # ggsave(filename = "./FRAN-reports/BorderChecksFigure.tiff", device = "tiff", dpi = 600, plot = bcontrol.plot)
+saveRDS(bcontrol.member.df, file = "./data/TempControlSchenge.rds")
