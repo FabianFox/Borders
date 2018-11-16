@@ -147,4 +147,7 @@ inf.total <- infringement.df %>%
         axis.ticks.x = element_line(size = .5))
 
 # Save
+# Data:
+saveRDS(asylum.df, file = "./data/AsylumStatistics.rds")
+# Plots:
 ggsave(filename = "./FRAN-reports/AsylumInfringmentProceduresFig.tiff", plot = inf.count$plot[[1]], device = "tiff", dpi = 600)
