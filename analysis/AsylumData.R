@@ -91,37 +91,22 @@ election.df <- import("./FRAN-reports/view_election.csv") %>%
   summarize(right_share = sum(vote_share[left_right > 8], na.rm = T)) %>%
   mutate(round_year = year(round_date(election_date))) %>%
   group_by(country_name_short, round_year) %>%      
-  filter(duplicated(country_name_short) | n() == 1) # Need to figure out how this works.
-
-# DOESN'T REALLY WORK YET ::::: READ UP ON ROLLING JOINS
-
+  filter(duplicated(country_name_short) | n() == 1) %>% # Need to figure out how this works.
+  select(-election_date)
+  
 # Matching procedure
-# (1) Exact matching
+# (1) Create a "full"-DB with all possible combinations of country-years;
+#     Fill missing values with earlier occurrence
+asyl_election_full.df <- asylum.df %>%
+  full_join(election.df, by = c("country" = "country_name_short", "year" = "round_year")) %>%
+  arrange(country, year) %>%
+  group_by(country) %>%
+  fill(right_share, .direction = "down") %>%
+  select(country, year, right_share)
+
+# (2) Join right_share to asylum.df
 asylum.df <- asylum.df %>%
-  left_join(election.df, by = c("country" = "country_name_short", "year" = "round_year"))
-
-# (2) Delete rows that matched exactly
-anti.election.df <- election.df %>%
-  anti_join(asylum.df, by = c("country_name_short" = "country", "round_year" = "year")) %>%
-  group_by(country_name_short) %>%
-  slice(which.max(round_year)) %>%
-  select(country_name_short, right_share, election_date)
-
-# (3) Match previous election results for remaining countries
-# Share of "right wing"-parties
-asylum.df$right_share <- ifelse(
-  is.na(asylum.df$right_share),
-  anti.election.df[match(asylum.df$country, anti.election.df$country_name_short),]$right_share,
-  asylum.df$right_share)
-
-# Election date
-asylum.df$election_date <- ifelse(
-  is.na(asylum.df$election_date),
-  anti.election.df[match(asylum.df$country, anti.election.df$country_name_short),]$election_date,
-  asylum.df$election_date)
-
-asylum.df <- asylum.df %>%
-  mutate(election_date = as_date(election_date))
+  left_join(asyl_election_full.df, by = c("country", "year"))
 
 # Visualizations using the "full" infringement data set
 # Grouped by country/year - individual plots by policy
