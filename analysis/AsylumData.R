@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate)
+p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate, countrycode)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -44,6 +44,28 @@ asylum.df <- get_eurostat("tps00191", time_format = "num", stringsAsFactors = FA
   filter(country != "EU28") %>%
   mutate(country = countrycode(country, "eurostat", "iso3c")) 
 
+# First instance decisions: Recognition rates (migr_asydcfsta, accessed: 16.11.2018)
+asylum_decisions.df <- read_csv("./FRAN-reports/migr_asydcfsta_1_Data.csv") %>%
+  rename_all(tolower) %>%
+  rename(year = time) %>%
+  filter(year >= 2015, 
+         citizen == "Total",
+         sex == "Total",
+         age == "Total",
+         decision %in% c("Total", "Total positive decisions", "Rejected"),
+         !geo %in% c("Total", "European Union (current composition)", "Turkey")) %>%
+  mutate(country = countrycode(geo, origin = "country.name.en", destination = "iso3c"),
+         value = as.numeric(str_replace_all(value, ",", ""))) %>%
+  select(-unit, -citizen, -sex, -age, -geo) %>%
+  spread(decision, value) %>%
+  clean_names() %>%
+  mutate(rejection_rate = (total - total_positive_decisions) / total * 100,
+         recognition_rate = (total - rejected) / total * 100)
+
+# Put Eurostat asylum statistics together
+asylum.df <- asylum.df %>%
+  left_join(asylum_decisions.df, by = c("country", "year"))
+  
 # Population in 2016 (World Bank Indicators)
 # World Bank 
 # (1)
