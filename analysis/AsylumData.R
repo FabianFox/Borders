@@ -5,7 +5,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate, padr)
+p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
