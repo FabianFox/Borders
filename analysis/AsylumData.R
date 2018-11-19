@@ -1,13 +1,12 @@
 # Asylum Data
 
-# Data from: 
-# https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/
-
 # Load/install packages
+### ------------------------------------------------------------------------------------------------------------------ ###
+
 if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, lubridate, countrycode)
 
-## ------------------------------------------------------------------------------------------------------------ ##
+### ------------------------------------------------------------------------------------------------------------------ ###
 
 # Border Management and Schengen
 borderURL <- "https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/infringements_en?country=All&field_infringement_policy_tid=1625&field_infringement_number_title="
@@ -130,6 +129,9 @@ asyl_election_full.df <- asylum.df %>%
 asylum.df <- asylum.df %>%
   left_join(asyl_election_full.df, by = c("country", "year"))
 
+# Exploratory visualizations of the data
+### ------------------------------------------------------------------------------------------------------------------ ###
+
 # Visualizations using the "full" infringement data set
 # Grouped by country/year - individual plots by policy
 inf.count <- infringement.df %>%
@@ -168,7 +170,23 @@ inf.total <- infringement.df %>%
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
-# Save
+# Recognition rate by country over time (2015-2017)
+recognition.fig <- asylum.df %>%
+  ggplot(aes(x = year, y = recognition_rate)) +
+  geom_line(stat = "identity") +
+  facet_wrap(~country) +
+  ylab("") +
+  xlab("") +
+  scale_x_continuous(breaks = seq(2015, 2017, 1)) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
+
+# Saving data and figures
+### ------------------------------------------------------------------------------------------------------------------ ###
 # Data:
 saveRDS(asylum.df, file = "./data/AsylumStatistics.rds")
 # Plots:
