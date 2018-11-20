@@ -137,7 +137,15 @@ asylum.df <- asylum.df %>%
   left_join(asyl_election_full.df, by = c("country", "year")) %>%
   mutate(region = countrycode(country, "iso3c", "region"),
          EU28 = countrycode(country, "iso3c", "eu28")) %>%
-  filter(EU28 == "EU")
+  filter(EU28 == "EU") %>%
+  mutate(group = case_when(
+    region == "Eastern Europe" ~ "Visegrad and Eastern EU",
+    region %in% c("Northern Europe", "Western Europe") & 
+      applicants_per1000 > 2 ~ "Host states",
+    country %in% c("MLT", "CYP", "ITA", "GRC", "ESP") ~ "Frontline states",
+    TRUE ~ "Other"
+  ))
+  
 
 # Tables
 ### ------------------------------------------------------------------------###
@@ -146,13 +154,6 @@ asylum.df <- asylum.df %>%
 table1 <- asylum.df %>%
   filter(year == 2015, EU28 == "EU") %>%
   select(country, region, applicants_per1000) %>%
-  mutate(group = case_when(
-    region == "Eastern Europe" ~ "Visegrad and Eastern EU",
-    region %in% c("Northern Europe", "Western Europe") & 
-      applicants_per1000 > 2 ~ "Host states",
-    country %in% c("MLT", "CYP", "ITA", "GRC", "ESP") ~ "Frontline states",
-    TRUE ~ "Other"
-  )) %>%
   arrange(factor(group, levels = c("Visegrad and Eastern EU", "Host states", 
                                    "Frontline states", "Other")),
           region,
@@ -163,10 +164,39 @@ table1 <- asylum.df %>%
 write.table(table1, file = "./output/table1.txt", sep = ",", quote = FALSE, 
             row.names = F)
 
-
-
 # Exploratory visualizations of the data
 ### ------------------------------------------------------------------------###
+
+# Convergence over time (intra group)
+intra.rejection.fig <- ggplot(asylum.df, aes(x = year, y = rejection_rate, 
+                                             group = country)) +
+  geom_line() +
+  facet_wrap(~group) +
+  ylab("") +
+  xlab("") +
+  scale_x_continuous(breaks = seq(2015, 2017, 1)) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
+
+# Convergence over time (mean group)
+inter.rejection.df <- asylum.df %>%
+  group_by(group, year) %>%
+  summarize(mean_rejection_rate = mean(rejection_rate, na.rm = TRUE)) %>%
+  ggplot(aes(x = year, y = mean_rejection_rate, colour = group)) +
+  geom_line() +
+  ylab("") +
+  xlab("") +
+  scale_x_continuous(breaks = seq(2015, 2017, 1)) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
 
 # Visualizations using the "full" infringement data set
 # Grouped by country/year - individual plots by policy
