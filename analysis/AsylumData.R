@@ -137,14 +137,24 @@ asylum.df <- asylum.df %>%
   left_join(asyl_election_full.df, by = c("country", "year")) %>%
   mutate(region = countrycode(country, "iso3c", "region"),
          EU28 = countrycode(country, "iso3c", "eu28")) %>%
-  filter(EU28 == "EU") %>%
+  filter(EU28 == "EU")
+
+# Create the grouping variable based on 2015 data
+grouping.df <- asylum.df %>%
+  filter(year == 2015) %>%
+  select(country, region, applicants_per1000) %>%
   mutate(group = case_when(
     region == "Eastern Europe" ~ "Visegrad and Eastern EU",
     region %in% c("Northern Europe", "Western Europe") & 
       applicants_per1000 > 2 ~ "Host states",
     country %in% c("MLT", "CYP", "ITA", "GRC", "ESP") ~ "Frontline states",
     TRUE ~ "Other"
-  ))
+  )) %>%
+  select(country, group)
+
+# Join grouping variable and carry forward
+asylum.df <- asylum.df %>%
+  left_join(grouping.df)
   
 
 # Tables
