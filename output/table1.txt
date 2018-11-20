@@ -1,0 +1,29 @@
+country,region,applicants_per1000,group
+BGR,Eastern Europe,2.84,Visegrad and Eastern EU
+CZE,Eastern Europe,0.14,Visegrad and Eastern EU
+HUN,Eastern Europe,18,Visegrad and Eastern EU
+POL,Eastern Europe,0.32,Visegrad and Eastern EU
+ROU,Eastern Europe,0.06,Visegrad and Eastern EU
+SVK,Eastern Europe,0.06,Visegrad and Eastern EU
+DNK,Northern Europe,3.68,Host states
+FIN,Northern Europe,5.9,Host states
+SWE,Northern Europe,16.58,Host states
+AUT,Western Europe,10.2,Host states
+BEL,Western Europe,3.96,Host states
+DEU,Western Europe,5.83,Host states
+LUX,Western Europe,4.4,Host states
+NLD,Western Europe,2.65,Host states
+ESP,Southern Europe,0.32,Frontline states
+GRC,Southern Europe,1.22,Frontline states
+ITA,Southern Europe,1.38,Frontline states
+MLT,Southern Europe,4.15,Frontline states
+CYP,Western Asia,1.95,Frontline states
+EST,Northern Europe,0.17,Other
+GBR,Northern Europe,0.62,Other
+IRL,Northern Europe,0.7,Other
+LTU,Northern Europe,0.11,Other
+LVA,Northern Europe,0.17,Other
+HRV,Southern Europe,0.05,Other
+PRT,Southern Europe,0.09,Other
+SVN,Southern Europe,0.13,Other
+FRA,Western Europe,1.14,Other
