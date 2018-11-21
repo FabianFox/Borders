@@ -5,7 +5,7 @@
 
 if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, 
-       lubridate, countrycode)
+       lubridate, countrycode, ggrepel)
 
 ### ------------------------------------------------------------------------###
 
@@ -144,10 +144,10 @@ grouping.df <- asylum.df %>%
   filter(year == 2015) %>%
   select(country, region, applicants_per1000) %>%
   mutate(group = case_when(
-    region == "Eastern Europe" ~ "Visegrad and Eastern EU",
-    region %in% c("Northern Europe", "Western Europe") & 
-      applicants_per1000 > 2 ~ "Host states",
-    country %in% c("MLT", "CYP", "ITA", "GRC", "ESP") ~ "Frontline states",
+      region %in% c("Northern Europe", "Western Europe") & 
+      applicants_per1000 > 3.5 ~ "Host states",
+    country %in% c("MLT", "CYP", "ITA", "GRC") ~ "Frontline states",
+    country %in% c("CZE", "HUN", "POL", "SVK") ~ "Visegrád Group",
     TRUE ~ "Other"
   )) %>%
   select(country, group)
@@ -155,16 +155,15 @@ grouping.df <- asylum.df %>%
 # Join grouping variable and carry forward
 asylum.df <- asylum.df %>%
   left_join(grouping.df)
-  
 
 # Tables
 ### ------------------------------------------------------------------------###
 
 # Table 1. Country, application_per1000, region in 2015
 table1 <- asylum.df %>%
-  filter(year == 2015, EU28 == "EU") %>%
-  select(country, region, applicants_per1000) %>%
-  arrange(factor(group, levels = c("Visegrad and Eastern EU", "Host states", 
+  filter(year == 2015, EU28 == "EU", group != "Other") %>%
+  select(country, region, applicants_per1000, group) %>%
+  arrange(factor(group, levels = c("Visegrád Group", "Host states", 
                                    "Frontline states", "Other")),
           region,
           country,
@@ -178,9 +177,12 @@ write.table(table1, file = "./output/table1.txt", sep = ",", quote = FALSE,
 ### ------------------------------------------------------------------------###
 
 # Convergence over time (intra group)
-intra.rejection.fig <- ggplot(asylum.df, aes(x = year, y = rejection_rate, 
-                                             group = country)) +
+intra.rejection.fig <- asylum.df %>%
+  filter(group != "Other") %>%
+  ggplot(aes(x = year, y = rejection_rate, group = country,
+             label = country)) +
   geom_line() +
+  geom_text_repel(data = subset(asylum.df, year == 2015 & group != "Other")) +
   facet_wrap(~group) +
   ylab("") +
   xlab("") +
