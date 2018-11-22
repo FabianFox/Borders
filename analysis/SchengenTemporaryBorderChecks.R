@@ -71,5 +71,11 @@ bcontrol.plot <- ggplot(bcontrol.plot.df) +
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
-# ggsave(filename = "./FRAN-reports/BorderChecksFigure.tiff", device = "tiff", dpi = 600, plot = bcontrol.plot)
+# Saving data and figures
+### ------------------------------------------------------------------------###
+# Data:
 saveRDS(bcontrol.member.df, file = "./data/TempControlSchengen.rds")
+
+# Plots:
+ggsave(filename = "./FRAN-reports/TempControlsSchengenFig.tiff", 
+       plot = bcontrol.plot, device = "tiff", dpi = 600)
