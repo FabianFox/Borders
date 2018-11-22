@@ -176,7 +176,36 @@ write.table(table1, file = "./output/table1.txt", sep = ",", quote = FALSE,
 # Exploratory visualizations of the data
 ### ------------------------------------------------------------------------###
 
-# Convergence over time (intra group)
+### Theoretical convergence
+convergence.df <- asylum.df %>%
+  select(country, group, year) %>%
+  filter(group != "Other")
+
+paths <- tibble(
+  group = c(rep("Visegrad Group", 3), rep("Host states", 3), rep("Frontline states", 3)),
+  year = rep(2015:2017, 3),
+  approach = jitter(c(2:4, 1:3, c(1, 1, 2.5)), amount = 0.7)
+)
+
+convergence.df <- convergence.df %>%
+  left_join(paths)
+
+(convergence.fig <- convergence.df %>%
+  ggplot(aes(x = year, y = approach, group = group, colour = group)) +
+  stat_smooth(method="lm", span = 0.1, se = TRUE, aes(fill=group), alpha=0.3,
+              linetype = 0) +
+  ylab("Asylum policies") +
+  xlab("Time") +
+  scale_x_continuous(breaks = seq(2015, 2017, 1)) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5),
+        legend.title = element_blank(),
+        axis.text.x = element_blank()))
+
+### Convergence over time (intra group)
 intra.rejection.fig <- asylum.df %>%
   filter(group != "Other") %>%
   ggplot(aes(x = year, y = rejection_rate, group = country,
@@ -194,7 +223,7 @@ intra.rejection.fig <- asylum.df %>%
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
-# Convergence over time (mean group)
+### Convergence over time (mean group)
 inter.rejection.df <- asylum.df %>%
   group_by(group, year) %>%
   summarize(mean_rejection_rate = mean(rejection_rate, na.rm = TRUE)) %>%
@@ -231,7 +260,7 @@ inf.count <- infringement.df %>%
                              text = element_text(size = 14),
                              axis.ticks.x = element_line(size = .5))))
 
-# Total infringment procedures by policy field
+### Total infringment procedures by policy field
 inf.total <- infringement.df %>%
   group_by(year, policy) %>% 
   summarise(count = n()) %>% 
@@ -270,3 +299,6 @@ saveRDS(asylum.df, file = "./data/AsylumStatistics.rds")
 # Plots:
 ggsave(filename = "./FRAN-reports/AsylumInfringmentProceduresFig.tiff", 
        plot = inf.count$plot[[1]], device = "tiff", dpi = 600)
+
+ggsave(filename = "./FRAN-reports/TheoreticalConvergence.tiff", 
+       plot = convergence.fig, device = "tiff", dpi = 600)
