@@ -41,38 +41,93 @@ bcontrol.df <- bcontrol.df %>%
     country = countrycode(`Member State`, "country.name.en", "iso3c"),
     Begin = as.numeric(Begin),
     End = as.numeric(End)) %>%
-  as_tibble()
+  as_tibble() 
 
-# Prepare the data frame for plotting (general number of temporary border controls)
-bcontrol.plot.df <- bcontrol.df %>%
-  group_by(Begin, migration) %>%
-  distinct(`Member State`, Begin, migration, .keep_all = TRUE) %>%
-  summarize(checks = n()) 
+# Join to EU28-base
+year <- 2015:2018
+migration <- c("Migration", "Other")
+
+bcontrol.expand.df <- tibble(
+  country = countrycode::codelist$iso3c
+) %>%
+  mutate(eu28 = countrycode(country, "iso3c", "eu28")) %>%
+  filter(eu28 == "EU") %>%
+  expand(country, year, migration) 
 
 # By individual Member States
-bcontrol.member.df <- bcontrol.df %>%
+bcontrol.expand.join <- bcontrol.df %>%
   filter(Begin >= 2015) %>%
   group_by(`Member State`, Begin, migration, country) %>%
   distinct(`Member State`, Begin, migration, .keep_all = TRUE) %>%
   summarize(checks = n()) %>%
-  arrange(desc(checks)) %>%
+  arrange(desc(checks))
+
+# Join data to the expanded df
+bcontrol.expand.df <- bcontrol.expand.df %>%
+  left_join(bcontrol.expand.join, by = c("country", "migration", "year" = "Begin")) %>%
+  mutate(member_state = countrycode(country, "iso3c", "country.name.en"),
+         checks = ifelse(is.na(checks), 0, checks)) %>%
+  select(country, year, member_state, migration, checks) 
+
+# Housekeeping
+rm(year_duration, bcontrol.expand.join, loc, migration, year)
+
+
+# Visualization
+### ------------------------------------------------------------------------###
+
+# Note: States can reinstate border checks several times per year. Here, each type is counted only once
+#       per year. 
+
+# Over time (only countries in grouping variable, see AsylumData.R))
+bcontrol.plot <- bcontrol.df %>%
+  group_by(Begin, migration) %>%
+  distinct(`Member State`, Begin, migration, .keep_all = TRUE) %>%
   mutate(group = case_when(
     country %in% c("CZE", "HUN", "POL", "SVK") ~ "Visegrád Group",
     country %in% c("AUT", "BEL", "DNK",  "DEU", "FIN", "LUX", "SWE") ~ "Host states",
     country %in% c("CYP", "GRC", "ITA", "MLT") ~ "Frontline states"
   )) %>%
-  filter(!is.na(group))
-
-# Plot of border checks by year and type
-# Note: States can reinstate border checks several times per year. Here, each type is counted only once
-#       per year. 
-bcontrol.plot <- ggplot(bcontrol.plot.df) +
+  filter(!is.na(group)) %>%
+  summarize(checks = n()) %>%
+  ggplot() +
   geom_bar(aes(x = Begin, y = checks, fill = migration), stat = "identity") +
   labs(title = "Number of temporary border controls, 2006 - 2017",
        caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
        x = "", y = "") +
   scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0,10)) +
   scale_x_continuous(breaks = seq(2006, 2018, 4)) +
+  scale_fill_manual("Reason", values = c("Migration" = "#CCCCCC", "Other" = "#4D4D4D")) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
+
+# By grouping variable (see AsylumData.R)
+bcontrol.group.df <- bcontrol.expand.df %>%
+  group_by(country, year, migration) %>%
+  distinct(country, year, migration, .keep_all = TRUE) %>%
+  mutate(group = case_when(
+    country %in% c("CZE", "HUN", "POL", "SVK") ~ "Visegrád Group",
+    country %in% c("AUT", "BEL", "DNK",  "DEU", "FIN", "LUX", "SWE") ~ "Host states",
+    country %in% c("CYP", "GRC", "ITA", "MLT") ~ "Frontline states"
+  )) %>%
+  filter(!is.na(group)) %>%
+  group_by(group, year, migration) %>%
+  mutate(n_country = n(),
+         checks = sum(checks)) %>%
+  select(group, year, checks, migration, n_country) %>%
+  distinct()
+
+bcontrol.group.plot <- ggplot(bcontrol.group.df) +
+  geom_bar(aes(x = year, y = checks, fill = migration), stat = "identity") +
+  facet_wrap(~group) +
+  labs(title = "Number of temporary border controls, 2006 - 2017",
+       caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
+       x = "", y = "") +
+  scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0,10)) +
+  scale_x_continuous(breaks = seq(2015, 2018, 1)) +
   scale_fill_manual("Reason", values = c("Migration" = "#CCCCCC", "Other" = "#4D4D4D")) +
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank(),
