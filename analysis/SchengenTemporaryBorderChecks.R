@@ -4,9 +4,12 @@
 # pdf: https://ec.europa.eu/home-affairs/sites/homeaffairs/files/what-we-do/policies/borders-and-visas/schengen/reintroduction-border-control/docs/ms_notifications_-_reintroduction_of_border_control_en.pdf
 
 # Load/install packages
+### ------------------------------------------------------------------------###
 if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, rvest, qdap, rio, tidyr, stringr, countrycode)
 
+# Temporary border checks
+### ------------------------------------------------------------------------###
 # Location of file
 loc <- "./FRAN-reports/Member States' Notifications of Reintroduction of border control.xlsx"
 
@@ -44,16 +47,21 @@ bcontrol.df <- bcontrol.df %>%
 bcontrol.plot.df <- bcontrol.df %>%
   group_by(Begin, migration) %>%
   distinct(`Member State`, Begin, migration, .keep_all = TRUE) %>%
-  summarize(checks = n())
+  summarize(checks = n()) 
 
 # By individual Member States
-bcontrol.member.df <-
-  bcontrol.df %>%
-  filter(Begin >= 2015, migration == "Migration") %>%
-  group_by(`Member State`) %>%
-  distinct(`Member State`, Begin, .keep_all = TRUE) %>%
+bcontrol.member.df <- bcontrol.df %>%
+  filter(Begin >= 2015) %>%
+  group_by(`Member State`, Begin, migration, country) %>%
+  distinct(`Member State`, Begin, migration, .keep_all = TRUE) %>%
   summarize(checks = n()) %>%
-  arrange(desc(checks))
+  arrange(desc(checks)) %>%
+  mutate(group = case_when(
+    country %in% c("CZE", "HUN", "POL", "SVK") ~ "Visegrád Group",
+    country %in% c("AUT", "BEL", "DNK",  "DEU", "FIN", "LUX", "SWE") ~ "Host states",
+    country %in% c("CYP", "GRC", "ITA", "MLT") ~ "Frontline states"
+  )) %>%
+  filter(!is.na(group))
 
 # Plot of border checks by year and type
 # Note: States can reinstate border checks several times per year. Here, each type is counted only once
