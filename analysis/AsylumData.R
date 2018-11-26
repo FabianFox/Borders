@@ -290,6 +290,7 @@ intra.rejection.fig <- asylum.df %>%
 
 ### Convergence over time (mean group)
 inter.rejection.df <- asylum.df %>%
+  filter(group != "Other") %>%
   group_by(group, year) %>%
   summarize(mean_rejection_rate = mean(rejection_rate, na.rm = TRUE)) %>%
   ggplot(aes(x = year, y = mean_rejection_rate, colour = group)) +
