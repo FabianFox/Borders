@@ -37,7 +37,8 @@ bcontrol.df <- bcontrol.df %>%
       str_detect(tolower(`Reasons/Scope`), "migration|migrant|migratory|influx|recommendation|movements") == FALSE ~ "Other"),
     country = countrycode(`Member State`, "country.name.en", "iso3c"),
     Begin = as.numeric(Begin),
-    End = as.numeric(End))
+    End = as.numeric(End)) %>%
+  as_tibble()
 
 # Prepare the data frame for plotting (general number of temporary border controls)
 bcontrol.plot.df <- bcontrol.df %>%
