@@ -5,35 +5,17 @@
 
 if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, 
-       lubridate, countrycode, ggrepel)
+       lubridate, countrycode, ggrepel, tidyr, stringr)
 
+# Asylum data
 ### ------------------------------------------------------------------------###
 
-# Border Management and Schengen
-borderURL <- "https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/infringements_en?country=All&field_infringement_policy_tid=1625&field_infringement_number_title="
-
-# Asylum
-asylumURL <- "https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/infringements_en?country=All&field_infringement_policy_tid=1598&field_infringement_number_title="
-
-# Return policy
-returnURL <- "https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/infringements_en?country=All&field_infringement_policy_tid=1631&field_infringement_number_title="
-
-# Function that extracts the respective tables
-ext_table <- function(x) {
-  read_html(x) %>%
-    html_table(".table", header = T) %>%
-    .[[1]]
-}
-
-# Scrape
-urls <- list(borderURL, asylumURL, returnURL)
-
-# Add additional data:
 # - number of asylum applications (eurostat)
 # ID: tps00191: Asylum and first time asylum applicants - annual aggregated data 
 #     (rounded)
 # Metadata: http://ec.europa.eu/eurostat/cache/metadata/en/migr_asyapp_esms.htm
-# Further information: https://bit.ly/2LXrsKB and http://dd.eionet.europa.eu/vocabulary/eurostat/asyl_app
+# Further information: https://bit.ly/2LXrsKB and 
+#                      http://dd.eionet.europa.eu/vocabulary/eurostat/asyl_app
 
 # Clean eurostat-cache from time to time
 # clean_eurostat_cache(cache_dir = NULL)
@@ -85,6 +67,29 @@ asylum.df <- asylum.df %>%
   left_join(wb.info, by = c("country" = "iso3c", "year")) %>%
   mutate(applicants_per1000 = round(applicants / (population / 1000), 2)) 
 
+
+# Infringement procedures 
+### ------------------------------------------------------------------------###
+
+# Border Management and Schengen
+borderURL <- "https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/infringements_en?country=All&field_infringement_policy_tid=1625&field_infringement_number_title="
+
+# Asylum
+asylumURL <- "https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/infringements_en?country=All&field_infringement_policy_tid=1598&field_infringement_number_title="
+
+# Return policy
+returnURL <- "https://ec.europa.eu/home-affairs/what-is-new/eu-law-and-monitoring/infringements_en?country=All&field_infringement_policy_tid=1631&field_infringement_number_title="
+
+# Function that extracts the respective tables
+ext_table <- function(x) {
+  read_html(x) %>%
+    html_table(".table", header = T) %>%
+    .[[1]]
+}
+
+# Scrape
+urls <- list(borderURL, asylumURL, returnURL)
+
 # Scrape over urls and combine df
 infringement.df <- map(urls, ext_table) %>%
   bind_rows() %>%
@@ -107,6 +112,10 @@ infringement.join <- infringement.df %>%
 asylum.df <- asylum.df %>%
   left_join(infringement.join) %>%
   mutate(lawsuits = ifelse(is.na(lawsuits), 0, lawsuits))
+
+
+# ParlGov Data
+### ------------------------------------------------------------------------###
 
 # ParlGov data (http://www.parlgov.org/, accessed: 15.11.2018)
 election.df <- import("./FRAN-reports/view_election.csv") %>%
@@ -139,6 +148,59 @@ asylum.df <- asylum.df %>%
          EU28 = countrycode(country, "iso3c", "eu28")) %>%
   filter(EU28 == "EU")
 
+
+# Temporary border controls Data
+### ------------------------------------------------------------------------###
+# Data on temporarily reinstated border controls in the Schengen Area
+
+# Source: https://ec.europa.eu/home-affairs/what-we-do/policies/borders-and-visas/schengen/reintroduction-border-control_en
+# pdf: https://ec.europa.eu/home-affairs/sites/homeaffairs/files/what-we-do/policies/borders-and-visas/schengen/reintroduction-border-control/docs/ms_notifications_-_reintroduction_of_border_control_en.pdf
+
+# Location of file
+loc <- "./FRAN-reports/Member States' Notifications of Reintroduction of border control.xlsx"
+
+# Load the data
+bcontrol.df <- import(loc)[2:96,] %>%
+  setNames(.[1,]) %>%
+  .[-1,]
+
+# Seperate dates 
+year_duration <- str_extract_all(bcontrol.df$Duration, "[:digit:]{4}")
+
+# Add Begin/End of border control to data frame
+bcontrol.df <- bcontrol.df %>%
+  mutate(Begin = map(year_duration, 1),
+         End = map(year_duration, 2),
+         End = if_else(lengths(year_duration) == 1, Begin, End),
+         Begin = unlist(Begin),
+         End = unlist(End))
+
+# Correct a parsing problem 
+bcontrol.df[which(bcontrol.df$Begin == "4008"), c("Begin", "End")] <- c("2009", "2009")
+
+# By now excluding some events concerning security issues
+bcontrol.df <- bcontrol.df %>%
+  mutate(
+    migration = case_when(
+      str_detect(tolower(`Reasons/Scope`), "migration|migrant|migratory|influx|recommendation|movements") == TRUE ~ "Migration",
+      str_detect(tolower(`Reasons/Scope`), "migration|migrant|migratory|influx|recommendation|movements") == FALSE ~ "Other"),
+    country = countrycode(`Member State`, "country.name.en", "iso3c"),
+    Begin = as.numeric(Begin),
+    End = as.numeric(End)) %>%
+  filter(migration == "Migration") %>%
+  select(country, Begin) %>%
+  group_by(country, Begin) %>%
+  summarize(checks = n()) %>%
+  as_tibble()
+
+asylum.df <- asylum.df %>%
+  left_join(bcontrol.df, by = c("country", "year" = "Begin")) %>%
+  mutate(checks = ifelse(is.na(checks), 0, checks))
+
+
+# Country groups
+### ------------------------------------------------------------------------###
+
 # Create the grouping variable based on 2015 data
 grouping.df <- asylum.df %>%
   filter(year == 2015) %>%
@@ -154,7 +216,9 @@ grouping.df <- asylum.df %>%
 
 # Join grouping variable and carry forward
 asylum.df <- asylum.df %>%
-  left_join(grouping.df)
+  left_join(grouping.df) %>%
+  mutate(checks = ifelse(is.na(checks), 0, checks))
+
 
 # Tables
 ### ------------------------------------------------------------------------###
@@ -172,6 +236,7 @@ table1 <- asylum.df %>%
 # To word
 write.table(table1, file = "./output/table1.txt", sep = ",", quote = FALSE, 
             row.names = F)
+
 
 # Exploratory visualizations of the data
 ### ------------------------------------------------------------------------###
@@ -291,6 +356,7 @@ recognition.fig <- asylum.df %>%
         panel.grid.major.x = element_blank(),
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
+
 
 # Saving data and figures
 ### ------------------------------------------------------------------------###
