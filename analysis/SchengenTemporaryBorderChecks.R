@@ -6,7 +6,7 @@
 # Load/install packages
 ### ------------------------------------------------------------------------###
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rvest, qdap, rio, tidyr, stringr, countrycode)
+p_load(tidyverse, rvest, qdap, rio, tidyr, stringr, countrycode, cowplot)
 
 # Temporary border checks
 ### ------------------------------------------------------------------------###
@@ -92,12 +92,12 @@ bcontrol.plot <- bcontrol.df %>%
   summarize(checks = n()) %>%
   ggplot() +
   geom_bar(aes(x = Begin, y = checks, fill = migration), stat = "identity") +
-  labs(title = "Number of temporary border controls, 2006 - 2017",
-       caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
+  labs(title = "Total number of temporary border controls, 2006 - 2018",
+       #caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
        x = "", y = "") +
   scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0,10)) +
   scale_x_continuous(breaks = seq(2006, 2018, 4)) +
-  scale_fill_manual("Reason", values = c("Migration" = "#CCCCCC", "Other" = "#4D4D4D")) +
+  scale_fill_manual("Reason: ", values = c("Migration" = "#CCCCCC", "Other" = "#4D4D4D")) +
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank(),
         panel.grid.major.x = element_blank(),
@@ -123,7 +123,7 @@ bcontrol.group.df <- bcontrol.expand.df %>%
 bcontrol.group.plot <- ggplot(bcontrol.group.df) +
   geom_bar(aes(x = year, y = checks, fill = migration), stat = "identity") +
   facet_wrap(~group) +
-  labs(title = "Number of temporary border controls, 2006 - 2017",
+  labs(title = "Number of temporary border controls by group, 2006 - 2018",
        caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
        x = "", y = "") +
   scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0,10)) +
@@ -135,6 +135,17 @@ bcontrol.group.plot <- ggplot(bcontrol.group.df) +
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
+# Combined plots
+legend <- get_legend(bcontrol.plot + theme(legend.position = "bottom"))
+
+combined.control.plot <- plot_grid(
+  bcontrol.plot + theme(legend.position = "none"),
+  bcontrol.group.plot + theme(legend.position = "none"),
+  nrow = 3,
+  rel_heights = c(0.4, 0.4, 0.1),
+  legend
+  )
+
 # Saving data and figures
 ### ------------------------------------------------------------------------###
 # Data:
@@ -142,4 +153,4 @@ saveRDS(bcontrol.member.df, file = "./data/TempControlSchengen.rds")
 
 # Plots:
 ggsave(filename = "./FRAN-reports/TempControlsSchengenFig.tiff", 
-       plot = bcontrol.plot, device = "tiff", dpi = 600)
+       plot = combined.control.plot, device = "tiff", dpi = 600)
