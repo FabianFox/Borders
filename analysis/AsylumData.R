@@ -255,7 +255,7 @@ paths <- tibble(
 convergence.df <- convergence.df %>%
   left_join(paths)
 
-(convergence.fig <- convergence.df %>%
+convergence.fig <- convergence.df %>%
   ggplot(aes(x = year, y = approach, group = group, colour = group)) +
   stat_smooth(method="lm", span = 0.1, se = TRUE, aes(fill=group), alpha=0.3,
               linetype = 0) +
@@ -268,16 +268,23 @@ convergence.df <- convergence.df %>%
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5),
         legend.title = element_blank(),
-        axis.text.x = element_blank()))
+        axis.text.x = element_blank())
 
-### Convergence over time (intra group)
-intra.rejection.fig <- asylum.df %>%
+### Convergence over time (intra group): REJECTION RATE
+intra.rejection.df <- asylum.df %>%
   filter(group != "Other") %>%
-  ggplot(aes(x = year, y = rejection_rate, group = country,
-             label = country)) +
-  geom_line() +
-  geom_text_repel(data = subset(asylum.df, year == 2015 & group != "Other")) +
+  group_by(group, year) %>%
+  mutate(mean_rejection = mean(rejection_rate))
+
+intra.rejection.fig <- intra.rejection.df %>%
+  ggplot(aes(x = year, y = rejection_rate, group = country)) +
+  geom_line(alpha = 0.4) +
+  geom_line(aes(x = year, y = mean_rejection, group = country), color = "red",
+            size = 2) +
   facet_wrap(~group) +
+  labs(title = "First instance rejection rate, 2015-2017",
+       subtitle = "Rejection rate by Member State and group (shaded/red)",
+       caption = "Source: Own computation based on migr_asydcfsta (Eurostat 2018)") +
   ylab("") +
   xlab("") +
   scale_x_continuous(breaks = seq(2015, 2017, 1)) +
@@ -288,13 +295,11 @@ intra.rejection.fig <- asylum.df %>%
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
-### Convergence over time (mean group)
-inter.rejection.df <- asylum.df %>%
-  filter(group != "Other") %>%
-  group_by(group, year) %>%
-  summarize(mean_rejection_rate = mean(rejection_rate, na.rm = TRUE)) %>%
-  ggplot(aes(x = year, y = mean_rejection_rate, colour = group)) +
-  geom_line() +
+# RECOGNITION rate by country over time (2015-2017)
+recognition.fig <- asylum.df %>%
+  ggplot(aes(x = year, y = recognition_rate)) +
+  geom_line(stat = "identity") +
+  facet_wrap(~country) +
   ylab("") +
   xlab("") +
   scale_x_continuous(breaks = seq(2015, 2017, 1)) +
@@ -343,29 +348,18 @@ inf.total <- infringement.df %>%
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
-# Recognition rate by country over time (2015-2017)
-recognition.fig <- asylum.df %>%
-  ggplot(aes(x = year, y = recognition_rate)) +
-  geom_line(stat = "identity") +
-  facet_wrap(~country) +
-  ylab("") +
-  xlab("") +
-  scale_x_continuous(breaks = seq(2015, 2017, 1)) +
-  scale_y_continuous(labels = function(x) paste0(x, "%")) +
-  theme_minimal() +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        text = element_text(size = 14),
-        axis.ticks.x = element_line(size = .5))
-
 
 # Saving data and figures
 ### ------------------------------------------------------------------------###
 # Data:
 saveRDS(asylum.df, file = "./data/AsylumStatistics.rds")
+
 # Plots:
 ggsave(filename = "./FRAN-reports/AsylumInfringmentProceduresFig.tiff", 
        plot = inf.count$plot[[1]], device = "tiff", dpi = 600)
 
 ggsave(filename = "./FRAN-reports/TheoreticalConvergence.tiff", 
        plot = convergence.fig, device = "tiff", dpi = 600)
+
+ggsave(filename = "./FRAN-reports/RejectionRateFig.tiff", 
+       plot = intra.rejection.fig, device = "tiff", dpi = 600)
