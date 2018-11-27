@@ -1,12 +1,16 @@
 # Data on EU's 'hotspot' approach
 
+# Load/install packages
+### ------------------------------------------------------------------------###
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, tabulizer, ggmap)
+p_load(tidyverse, tabulizer, ggmap, rnaturalearth, sf, ggrepel)
 
 # Data from:
 # - http://www.europarl.europa.eu/RegData/etudes/BRIE/2018/623563/EPRS_BRI(2018)623563_EN.pdf
 # also available: https://ec.europa.eu/home-affairs/sites/homeaffairs/files/what-we-do/policies/european-agenda-migration/press-material/docs/state_of_play_-_hotspots_en.pdf
 
+# Data from EP (2018) pdf-doc
+### ------------------------------------------------------------------------###
 # Get the pdf-document
 url <- "http://www.europarl.europa.eu/RegData/etudes/BRIE/2018/623563/EPRS_BRI(2018)623563_EN.pdf"
 # Download
@@ -47,6 +51,37 @@ for(i in 1:nrow(hotspot.df)) {
   i <- i + 1
   Sys.sleep(sample(seq(.5, 2, 0.5), 1))  
 }
+
+# Visualization
+### ------------------------------------------------------------------------###
+# Plot a map with capacities of hotspots
+# (1) Read hotspot data
+hotspot.df <- readRDS(file = "./data/hotspot.RDS")
+
+# (2) Get map
+world.sf <- ne_countries(returnclass = "sf") %>%
+  filter(region_wb %in% c("Europe & Central Asia", "Middle East & North Africa", "Sub-Saharan Africa")) 
+
+# (3) Plot using ggplot2 and geom_sf
+hotspot.fig <- ggplot(data = world.sf) +
+  geom_sf() +
+  geom_point(data = hotspot.df, aes(x = lon, y = lat, size = capacity)) +
+  geom_text_repel(data = hotspot.df, aes(x = lon, y = lat,
+                                         label = str_extract(hotspot.df$hotspot, "[:alpha:]*(?=,)")),
+                  point.padding = 0.3) +
+  coord_sf(xlim = c(0, 40), ylim = c(30, 50)) +
+  theme_void() +
+  theme(panel.grid.major = element_line(colour = "transparent"),
+        text = element_text(size = 14)) +
+  labs(title = "Location and capacity of 'hotspots' in Greece and Italy",
+       caption = "Data from EP (2018): goo.gl/W9hyuj",
+       size = "Capacity")
+
+# Save
+### ------------------------------------------------------------------------###
+# Plots
+ggsave(filename = "./FRAN-reports/HotspotFig.tiff", 
+       plot = hotspot.fig, device = "tiff", dpi = 600)
 
 # Save to disk
 saveRDS(object = hotspot.df, file = "./data/hotspot.RDS")
