@@ -28,14 +28,19 @@ p_load(tidyverse, rio, cowplot)
 
 # Load data
 EUwalls <- import("./data/EU-Walls.xlsx") %>%
-  mutate(length = as.numeric(length))
+  mutate(length = as.numeric(length)) %>%
+  arrange(begin)
 
 # Basic description
 walls.df <- EUwalls %>%
   filter(begin >= 2010 & reason == "migration",
          state1 != "MKD") %>%
   group_by(begin) %>%
-  summarise(length = sum(length), n = n())
+  summarise(length = sum(length), n = n()) %>%
+  mutate(cumsum = cumsum(length))
+
+walls.df <- walls.df %>%
+  filter(begin >= 2014)
 
 # Plot number of fences and length
 nfence <- ggplot(walls.df, aes(x = begin, y = n)) +
@@ -49,8 +54,8 @@ nfence <- ggplot(walls.df, aes(x = begin, y = n)) +
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
-lfence <- ggplot(walls.df, aes(x = begin, y = length)) +
-  geom_line() +
+lfence <- ggplot(walls.df, aes(x = begin, y = cumsum)) +
+  geom_point() +
   ylab("") +
   xlab("") +
   scale_x_continuous(breaks = seq(2010, 2016, 1)) + 
