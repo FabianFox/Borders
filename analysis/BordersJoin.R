@@ -50,6 +50,16 @@ barriers.ln.join <- barriers.ln %>%
 ### ------------------------------------------------------------------------ ###
 barriers.df <- bind_rows(mget(ls()[which(str_detect(ls(), "join") == TRUE)]))
 
+# Count occurences and remove duplicated borders
+# Note: Some datasets do not consider direction of border fortification
+barriers.df.join <- barriers.df %>%
+  group_by(state1, state2) %>%
+  mutate(n = n()) %>%
+  select(state1, state2, n) %>%
+  filter(n >= 1)
+
 # Housekeeping
+### ------------------------------------------------------------------------ ###
 rm(list = setdiff(ls(), 
                   c(ls()[which(str_detect(ls(), "join") == TRUE)], "barriers.df")))
+
