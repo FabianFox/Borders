@@ -48,3 +48,6 @@ barriers.jg <- barriers.jg %>%
 # 24 Israel - Gaza
 # 25: Egypt - Gaza
 # 44: France - Channel to Britain
+
+# (4) Save data
+saveRDS(barriers.jg, file = "./data/Jellissen & Gottheil 2013.rds")
