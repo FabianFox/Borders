@@ -16,10 +16,6 @@ p_load(tidyverse, countrycode, rio, docxtractr)
 ### ------------------------------------------------------------------------ ###
 barriers.docx <- read_docx("./data/Linnell et al 2016 - Supporting Material S1.docx")
 
-# Get information on the table
-docx_tbl_count(barriers.ln)
-docx_describe_tbls(barriers.ln)
-
 # Extract the table
 barriers.ln <- barriers.docx %>%
   docx_extract_tbl() %>%
@@ -42,6 +38,7 @@ barriers.ln <- barriers.ln %>%
          year = "2015/2016",  
          indicator = "fencing")
 
+# Remove unrecognized or clean unmatched states
 # India (Kashmir) = IND; remove Transnistria
 barriers.ln[41, "state2"] <- "IND"
 barriers.ln <- barriers.ln[-13,]
