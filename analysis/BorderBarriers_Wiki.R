@@ -74,3 +74,6 @@ barriers.wiki <- barriers.wiki %>%
 
 # Remove auxiliary objects
 rm(i, length.country, length.name.dy, name.dy, country)
+
+# Save data (07.01.2019)
+saveRDS(barriers.wiki, file = "./data/barriers.wiki.RDS")
