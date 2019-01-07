@@ -29,7 +29,7 @@ barriers.bw.join <- barriers.bw %>%
 
 # Wikipedia: Border Barrier
 # generated in: "BorderBarriers_Wiki.R"
-barriers.wiki.join <- barriers.wiki %>%
+barriers.wiki.join <- readRDS("./data/barriers.wiki.RDS") %>%
   select(vars)
 
 # Hassner & Wittenberg (2015)
