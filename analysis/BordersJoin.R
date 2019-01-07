@@ -5,6 +5,7 @@
 # - barriers.bw : Jones (2012) Border Walls: Security and the War on Terror, London: Zed Books, p. 10.
 # - barriers.wiki : https://en.wikipedia.org/wiki/Border_barrier
 # - barriers.hw : Hassner & Wittenberg (2015) https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/U16NEI
+# - barrier.cp : Carter & Poast (2017) http://www.paulpoast.com/#/original-data/4590503653
 # - barriers.jg : Jellissen & Gottheil (2013) On the utility of security fences along international borders
 # - barriers.ln : Linnell et al. (2013) Border Security Fencing and Wildlife
 
@@ -34,7 +35,8 @@ barriers.wiki.join <- readRDS("./data/barriers.wiki.RDS") %>%
 
 # Hassner & Wittenberg (2015)
 # generated in: "Hassner&Wittenberg2015 - BarriersToEntry_Data.R"
-#  
+barriers.hw.join <- barriers.hw %>%
+  select(vars)
 
 # Jellissen & Gottheil (2013)
 # generated in: "Jellissen&Gottheil2013 - OnTheUtilityOfSecurityFencesAlongInternationalBorders.R"
