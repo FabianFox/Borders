@@ -6,13 +6,21 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, rio)
+p_load(tidyverse, countrycode, rio, haven)
 
-# Unfortunately, the data is saved as RData
-barriers.hw <- get(load("./data/barrierstoentry.RData")) %>%
-  select(state1 = builder, state2 = target, begin, end, walllength)
+# Data available in dta-format
 
-# Remove variables created through load
-rm(x)
+# custom match for North Korea
+custom <- c("Democratic PRK" = "PRK")
 
-# Note: Should look at the article to get more information on the dataset.
+# Read data and adjust variables
+barriers.hw <- read_dta("./data/barrierstoentry.dta") %>%
+  select(state1 = builder, state2 = target, year = begin, 
+         end, walllength) %>%
+  filter(year > 1970) %>%                                       # earlier periods retain ceased nations                          
+  mutate(state1 = countrycode(state1, "country.name", "iso3c", 
+                              custom_match = custom),
+         state2 = countrycode(state2, "country.name", "iso3c", 
+                              custom_match = custom),
+         indicator = "fortified",
+         source = "Hassner&Wittenberg (2013)")
