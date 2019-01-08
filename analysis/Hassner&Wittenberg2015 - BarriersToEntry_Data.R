@@ -14,7 +14,7 @@ p_load(tidyverse, countrycode, rio, haven)
 custom <- c("Democratic PRK" = "PRK")
 
 # Read data and adjust variables
-barriers.hw <- read_dta("./data/barrierstoentry.dta") %>%
+barriers.hw <- read_dta("./data/border data/barrierstoentry.dta") %>%
   select(state1 = builder, state2 = target, year = begin, 
          end, walllength) %>%
   filter(year > 1970) %>%                                       # earlier periods retain ceased nations                          
