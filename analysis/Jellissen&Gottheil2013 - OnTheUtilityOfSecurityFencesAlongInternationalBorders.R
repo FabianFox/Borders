@@ -12,7 +12,7 @@ p_load(tidyverse, countrycode, rio, tabulizer)
 # (1) Read tables
 # Table 1. Security fences built, under construction, or proposed; placed whole 
 #          or in part in disputed space, worldwide
-barriers.jg.t1 <- extract_areas("./data/Jellissen & Gottheil 2013 - On the utility of security fences along international borders.pdf",
+barriers.jg.t1 <- extract_areas("./data/border data/Jellissen & Gottheil 2013 - On the utility of security fences along international borders.pdf",
                                   pages = 1) %>%
   .[[1]] %>%
   as_tibble(.) %>%
@@ -20,7 +20,7 @@ barriers.jg.t1 <- extract_areas("./data/Jellissen & Gottheil 2013 - On the utili
 
 # Table 2. Security fences built, under construction, or proposed; placed in non- 
 #          disputed space, worldwide
-barriers.jg.t2 <- extract_areas("./data/Jellissen & Gottheil 2013 - On the utility of security fences along international borders.pdf",
+barriers.jg.t2 <- extract_areas("./data/border data/Jellissen & Gottheil 2013 - On the utility of security fences along international borders.pdf",
                                pages = 2) %>%
   .[[1]] %>%
   as_tibble(.) %>%

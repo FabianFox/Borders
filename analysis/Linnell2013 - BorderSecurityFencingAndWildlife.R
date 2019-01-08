@@ -14,7 +14,7 @@ p_load(tidyverse, countrycode, rio, docxtractr)
 
 # Load data into R
 ### ------------------------------------------------------------------------ ###
-barriers.docx <- read_docx("./data/Linnell et al 2016 - Supporting Material S1.docx")
+barriers.docx <- read_docx("./data/border data/Linnell et al 2016 - Supporting Material S1.docx")
 
 # Extract the table
 barriers.ln <- barriers.docx %>%
