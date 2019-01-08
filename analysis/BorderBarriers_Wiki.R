@@ -76,4 +76,4 @@ barriers.wiki <- barriers.wiki %>%
 rm(i, length.country, length.name.dy, name.dy, country)
 
 # Save data (07.01.2019)
-saveRDS(barriers.wiki, file = "./data/barriers.wiki.RDS")
+saveRDS(barriers.wiki, file = "./data/border data/barriers.wiki.RDS")
