@@ -30,17 +30,18 @@ barriers.bw.join <- barriers.bw %>%
 
 # Wikipedia: Border Barrier
 # generated in: "BorderBarriers_Wiki.R"
-barriers.wiki.join <- readRDS("./data/barriers.wiki.RDS") %>%
+barriers.wiki.join <- readRDS("./data/border data/barriers.wiki.RDS") %>%
   select(vars)
 
 # Hassner & Wittenberg (2015)
 # generated in: "Hassner&Wittenberg2015 - BarriersToEntry_Data.R"
 barriers.hw.join <- barriers.hw %>%
-  select(vars)
+  select(vars) %>%
+  mutate(year = as.character(year))
 
 # Jellissen & Gottheil (2013)
 # generated in: "Jellissen&Gottheil2013 - OnTheUtilityOfSecurityFencesAlongInternationalBorders.R"
-barriers.jg.join <- readRDS("./data/Jellissen & Gottheil 2013.rds") %>%
+barriers.jg.join <- readRDS("./data/border data/Jellissen & Gottheil 2013.rds") %>%
   select(vars) # Check year variable
 
 # Linnell et al. (2013)
@@ -58,7 +59,9 @@ barriers.df.join <- barriers.df %>%
   group_by(state1, state2) %>%
   mutate(n = n()) %>%
   select(state1, state2, n) %>%
-  filter(n >= 1)
+  filter(n >= 1) %>%
+  distinct() %>%
+  arrange(state1, state2)
 
 # Housekeeping
 ### ------------------------------------------------------------------------ ###
