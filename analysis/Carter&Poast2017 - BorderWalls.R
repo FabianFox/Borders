@@ -13,4 +13,4 @@ if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, countrycode, rio)
 
 # Data available as excel-file (though likely SPSS-format)
-barriers.cp <- import("./data/Security Barriers 1800 to Present.xlsx", sheet = 1)
+barriers.cp <- import("./data/border data/Security Barriers 1800 to Present.xlsx", sheet = 1)
