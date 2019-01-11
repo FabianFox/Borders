@@ -231,11 +231,11 @@ borderlength.df <- tibble(
   blength = flatten_chr(blength)
 )
 
-# Transform English country names to ISO3 codes
+# Transform English country names to ISO3 codes (!!! See comment)
 borderlength.df <- borderlength.df %>%
   mutate(bstate = countrycode(bstate, origin = "country.name", destination = "iso3c",
                               custom_match = c("Kosovo" = "XKX")),
-         blength = strtoi(str_replace_all(blength, pattern = "\\.", replacement = "")))
+         blength = strtoi(str_replace_all(blength, pattern = "\\.", replacement = ""))) # !!! Some commas shouldn't be replaced (i.e. Spain - Morocco)
 
 # Some countries (BHR, CYP, SGP) are marked as not having a neigbour in the CIA World
 # Factbook 
