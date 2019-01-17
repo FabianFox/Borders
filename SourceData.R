@@ -232,6 +232,7 @@ borderlength.df <- tibble(
 )
 
 # Transform English country names to ISO3 codes (!!! See comment)
+# Use case_when to replace specifically.
 borderlength.df <- borderlength.df %>%
   mutate(bstate = countrycode(bstate, origin = "country.name", destination = "iso3c",
                               custom_match = c("Kosovo" = "XKX")),
