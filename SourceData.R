@@ -5,9 +5,7 @@
 
 # Packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, readxl, jsonlite,
-       igraph, 
-       wbstats)
+p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats)
 
 # Load data
 # Directed dyads retrieved from http://www.correlatesofwar.org/data-sets/direct-contiguity
@@ -231,13 +229,19 @@ borderlength.df <- tibble(
   blength = flatten_chr(blength)
 )
 
-# Transform English country names to ISO3 codes (!!! See comment)
+# Transform English country names to ISO3 codes
 # Use case_when to replace specifically.
 borderlength.df <- borderlength.df %>%
   mutate(bstate = countrycode(bstate, origin = "country.name", destination = "iso3c",
                               custom_match = c("Kosovo" = "XKX")),
-         blength = strtoi(str_replace_all(blength, pattern = "\\.", replacement = ""))) # !!! Some commas shouldn't be replaced (i.e. Spain - Morocco)
-
+         blength = as.numeric(
+           ifelse(
+             str_detect(blength, "[:digit:]?\\.[:digit:]{3}") == TRUE,
+             str_replace(blength, "\\.", ""), 
+             blength)
+           )
+         )
+         
 # Some countries (BHR, CYP, SGP) are marked as not having a neigbour in the CIA World
 # Factbook 
 borderlength.df[which(is.na(borderlength.df$bstate)),] <- c("SAU", "TUR", "MYS")
