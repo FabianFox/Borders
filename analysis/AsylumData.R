@@ -278,10 +278,13 @@ intra.rejection.df <- asylum.df %>%
 
 intra.rejection.fig <- intra.rejection.df %>%
   ggplot(aes(x = year, y = rejection_rate, group = country)) +
-  geom_line(alpha = 0.4) +
+  geom_line(alpha = 0.4, size = 0.8) +
   geom_line(aes(x = year, y = mean_rejection, group = country), color = "red",
             size = 2) +
   facet_wrap(~group) +
+  geom_label_repel(subset(intra.rejection.df, year == 2015), 
+                   mapping = aes(label = country), 
+                   size = 4, direction = "y") +
   labs(title = "First instance rejection rate, 2015-2017",
        subtitle = "Rejection rate by Member State and group (shaded/red)",
        caption = "Source: Own computation based on migr_asydcfsta (Eurostat 2018)") +
