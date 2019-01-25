@@ -93,7 +93,7 @@ bcontrol.plot <- bcontrol.df %>%
   ggplot() +
   geom_bar(aes(x = Begin, y = checks, fill = migration), stat = "identity") +
   labs(title = "Total number of temporary border controls, 2006 - 2018",
-       #caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
+       caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
        x = "", y = "") +
   scale_y_continuous(breaks = seq(0, 10, 2), limits = c(0,10)) +
   scale_x_continuous(breaks = seq(2006, 2018, 4)) +
@@ -103,6 +103,27 @@ bcontrol.plot <- bcontrol.df %>%
         panel.grid.major.x = element_blank(),
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
+
+# Countries that reinstated border controls at least once from 2015-2018
+bcontrol.year.plot <- bcontrol.expand.df %>%
+  filter(migration == "Migration") %>%
+  group_by(country) %>%
+  mutate(sum_checks = sum(checks)) %>%
+  filter(sum_checks >= 1,
+         checks != 0) %>%
+  ggplot() +
+  geom_waffle(aes(x = fct_infreq(country), y = year), fill = "#000000") +
+  labs(title = "Number of temporary border controls, 2015-2018",
+       caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
+       x = "", y = "") +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        legend.position = "none",
+        legend.title = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
+  
 
 # By grouping variable (see AsylumData.R)
 bcontrol.group.df <- bcontrol.expand.df %>%
@@ -154,3 +175,6 @@ saveRDS(bcontrol.member.df, file = "./data/TempControlSchengen.rds")
 # Plots:
 ggsave(filename = "./FRAN-reports/TempControlsSchengenFig.tiff", 
        plot = combined.control.plot, device = "tiff", dpi = 600)
+
+ggsave(filename = "./FRAN-reports/TempControlsSchengenFig_ByCountry.tiff", 
+       plot = bcontrol.year.plot, device = "tiff", dpi = 600)
