@@ -6,7 +6,7 @@
 # Load/install packages
 ### ------------------------------------------------------------------------###
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rvest, qdap, rio, tidyr, stringr, countrycode, cowplot)
+p_load(tidyverse, rvest, qdap, rio, tidyr, stringr, countrycode, cowplot, ggwaffle)
 
 # Temporary border checks
 ### ------------------------------------------------------------------------###
@@ -106,16 +106,26 @@ bcontrol.plot <- bcontrol.df %>%
 
 # Countries that reinstated border controls at least once from 2015-2018
 bcontrol.year.plot <- bcontrol.expand.df %>%
-  filter(migration == "Migration") %>%
+  mutate(group = case_when(
+    country %in% c("CZE", "HUN", "POL", "SVK") ~ "Visegrád Group",
+    country %in% c("AUT", "BEL", "DNK",  "DEU", "FIN", "LUX", "SWE") ~ "Host states",
+    country %in% c("CYP", "GRC", "ITA", "MLT") ~ "Frontline states"
+  )) %>%
+  filter(migration == "Migration",
+         !is.na(group)) %>%
   group_by(country) %>%
   mutate(sum_checks = sum(checks)) %>%
-  filter(sum_checks >= 1,
-         checks != 0) %>%
   ggplot() +
-  geom_waffle(aes(x = fct_infreq(country), y = year), fill = "#000000") +
+  geom_waffle(aes(x = fct_relevel(country,
+                                  "SVK", "POL", "CZE", "HUN",
+                                  "ITA", "GRC", "CYP", "MLT",
+                                  "LUX", "FIN", "BEL", "SWE", "DNK", "DEU", "AUT"),
+                  y = year, fill = factor(checks))) +
+  scale_fill_manual(values=c("#FFFFFF", "#000000")) +
   labs(title = "Number of temporary border controls, 2015-2018",
        caption = "Source: European Commission: Migration and Home Affairs.\nNote: Each type of border control is only counted once per year.",
        x = "", y = "") +
+  coord_flip() +
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank(),
         panel.grid.major.x = element_blank(),
