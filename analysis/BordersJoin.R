@@ -8,6 +8,7 @@
 # - barrier.cp : Carter & Poast (2017) http://www.paulpoast.com/#/original-data/4590503653
 # - barriers.jg : Jellissen & Gottheil (2013) On the utility of security fences along international borders
 # - barriers.ln : Linnell et al. (2013) Border Security Fencing and Wildlife
+# - barriers.an : Avdan (2019) Visas and Walls
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
