@@ -50,4 +50,4 @@ barriers.jg <- barriers.jg %>%
 # 44: France - Channel to Britain
 
 # (4) Save data
-saveRDS(barriers.jg, file = "./data/Jellissen & Gottheil 2013.rds")
+saveRDS(barriers.jg, file = "./data/border data/Jellissen & Gottheil 2013.rds")
