@@ -50,6 +50,11 @@ barriers.jg.join <- readRDS("./data/border data/Jellissen & Gottheil 2013.rds") 
 barriers.ln.join <- barriers.ln %>%
   select(vars)
   
+# Avdan (2019)
+barriers.av.join <- readRDS("./data/border data/Avdan 2019.rds") %>%
+  select(vars) %>%
+  mutate(year = as.character(year))
+
 # Join
 ### ------------------------------------------------------------------------ ###
 barriers.df <- bind_rows(mget(ls()[which(str_detect(ls(), "join") == TRUE)]))
