@@ -4,7 +4,6 @@
 # Notes:
 # - add Ceuta/Melilla
 
-
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
 if (!require("pacman")) install.packages("pacman")
@@ -26,22 +25,22 @@ barriers.av <- readRDS("./data/border data/Avdan 2019.rds")
 
 # Create a dataframe where the dyads are mirrored
 ### ------------------------------------------------------------------------ ###
-barriers.trnd <- barriers.av %>%
+barriers.av %>%
   mutate(stateA = state2, 
          stateB = state1) %>%
   select(-c(state1, state2)) %>%
   rename(state1 = stateA,
-         state2 = stateB)
+         state2 = stateB) -> barriers.trnd
 
 # Join both dataframes (fence data is undirected now)
-barriers.join <- barriers.av %>%
+barriers.av %>%
   bind_rows(barriers.trnd) %>%
-  arrange(state1, state2)
+  arrange(state1, state2) -> barriers.join
 
 # Join to boundary data
-boundaries.fncd <- boundaries %>%
+boundaries %>%
   left_join(barriers.join, by = c("adm0_a3_l" = "state1", "adm0_a3_r" = "state2")) %>%
-  filter(!is.na(indicator) & !is.na(year))
+  filter(!is.na(indicator) & !is.na(year)) -> boundaries.fncd 
 
 # Visualization
 ### ------------------------------------------------------------------------ ###
@@ -93,3 +92,18 @@ fence.fig <- ggdraw() +
 
 # left side (bar chart)
 # -0.1, 0.12, 0.5, 0.4, scale = .65
+
+# Distribution of fences across continents and subregions 
+# Source: https://en.wikipedia.org/wiki/UN_M.49
+### ------------------------------------------------------------------------ ###
+barriers.av %>%
+  mutate(region1 = countrycode(state1, "iso3c", "region"),
+         region2 = countrycode(state2, "iso3c", "region"),
+         continent1 = countrycode(state1, "iso3c", "continent"),
+         continent2 = countrycode(state2, "iso3c", "continent")) -> barriers.av
+  
+barriers.av %>%
+  group_by(continent1) %>%
+  summarise(n = n()) %>%
+  mutate(total = sum(n),
+         percentage = n / total * 100)
