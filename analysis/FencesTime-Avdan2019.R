@@ -107,3 +107,6 @@ barriers.av %>%
   summarise(n = n()) %>%
   mutate(total = sum(n),
          percentage = n / total * 100)
+
+#
+beepr::beep(4)
