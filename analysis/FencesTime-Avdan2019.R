@@ -3,6 +3,7 @@
 
 # Notes:
 # - add Ceuta/Melilla
+# - One fence is omitted (which one?)
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
