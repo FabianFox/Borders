@@ -3,7 +3,6 @@
 
 # Notes:
 # - add Ceuta/Melilla
-# - One fence is omitted (which one?)
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
@@ -69,6 +68,7 @@ barriers.av %>%
   summarise(count = n()) %>%
   mutate(csum = cumsum(count)) -> fence.line
 
+# (Missings are not plotted)
 fence.addin <- ggplot() +
   geom_bar(data = fence.bar, 
            aes(x = ryear, y = count), stat = "identity") +
