@@ -20,6 +20,7 @@ p_load(tidyverse, rio, countrycode, tabulizer, qdap, rvest, haven, docxtractr)
 # - jellissen2013 : Jellissen & Gottheil (2013) On the utility of security fences along international borders
 # - linnell2013 : Linnell et al. (2013) Border Security Fencing and Wildlife
 # - avdan2019 : Avdan (2019) Visas and Walls
+# - barriers.gsc : GlobalSecurity.org (https://www.globalsecurity.org/military/world/walls.htm)
 
 # Jones (2012): Border Walls
 ### ------------------------------------------------------------------------ ###
@@ -274,14 +275,27 @@ avdan2019.t2 <- import("./data/border data/Avdan 2019 - Visas and Walls_2.xlsx",
 # (2) Combine
 avdan2019.df <- bind_rows(avdan2019.t1, avdan2019.t2)
 
+# GlobalSecurity.org
+# 
+# Data from: 
+# https://www.globalsecurity.org/military/world/walls.htm
+### ------------------------------------------------------------------------ ###
+
+# Scrape the content of the table
+barriers.gsec <- read_html("https://www.globalsecurity.org/military/world/walls.htm") %>%
+  html_nodes("#content > table:nth-child(12)") %>%
+  html_table(header = TRUE) %>%
+  .[[1]] %>%
+  set_names(c("state1", "barrier", "begin", "end"))
+
 # Put the individual data sets into a list.df
 ### ------------------------------------------------------------------------ ###
 
 fence.df <- tibble(
   source = c("Avdan2019", "Hassner&Wittenberg2015", "Jellissen&Gottheil2013",
-             "LinnellEtAl2013", "Jones2012", "Wikipedia2019"),
+             "LinnellEtAl2013", "Jones2012", "Wikipedia2019", "GlobalSecurity2019"),
   data = list(avdan2019.df, hassner2015, jellissen2013.df, linnell2013.df, jones2012.df,
-           barriers.wiki))
+           barriers.wiki, barriers.gsc))
 
 # Save the data
 ### ------------------------------------------------------------------------ ###
