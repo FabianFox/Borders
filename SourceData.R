@@ -169,64 +169,81 @@ for (i in seq_along(folders)) {
 files <- flatten_chr(files)
 
 # (2) Extract the respective information from json-files
-border.len <- vector("list", length(files))
+border.cia <- vector("list", length(files))
 state <- vector("character", length(files))
   
 for (i in seq_along(files)) {
   state[i] <- str_extract_all(files[i], pattern = "(?<=/)[:alpha:]{2}(?=.json)")
   
   file <- fromJSON(files[i], simplifyVector = FALSE)
-  border <- file %>%
+  blength <- file %>%
     .$Geography %>%
     .$`Land boundaries` %>%
     .$`border countries` %>%
     .$text
   
-  border.len[i] <- ifelse(length(border) == 0, NA, border)
+  terrain <- file %>%
+    .$Geography %>% 
+    .$Terrain %>% 
+    .$text
+  
+  border.cia[[i]]$blength <- ifelse(length(blength) == 0, NA, blength)
+  border.cia[[i]]$terrain <- terrain
 }
 
 # This part needs checking
 # Check here: https://www.cia.gov/library/publications/the-world-factbook/appendix/appendix-d.html
 
 # Name the list elements (country identifier, FIPS105 -> ISO3)
-names(border.len) <- countrycode(flatten_chr(state), origin = "fips", destination = "iso3c")
+names(border.cia) <- countrycode(flatten_chr(state), origin = "fips", destination = "iso3c")
 
 # Remove unidentified countries
-border.len <- border.len[-c(which(is.na(names(border.len))))] 
+border.cia <- border.cia[-c(which(is.na(names(border.cia))))] 
 
 # Keep those countries from the CIA Factbook that are part of the base data
-border.len <- border.len[intersect(unique(border.df$state1), names(border.len))]
+border.cia <- border.cia[intersect(unique(border.df$state1), names(border.cia))]
 
 # Clean the character string with border length of neighbouring states
 # (A) Extract
-border.len <- map(border.len, ~paste0(", ", ., collapse = ""))
+border.cia <- tibble(
+  country = names(border.cia),
+  blength = map_chr(border.cia, 1) %>%
+    map_chr(~paste0(", ", ., collapse = "")),
+  terrain = map(border.cia, 2) %>%
+    map_chr(~ifelse(is_empty(.), NA, .))
+)
 
-bstate <- str_extract_all(border.len, pattern = "(?<=,\\s)(.)*?(?=\\s[:digit:])") 
-blength.help <- str_replace_all(border.len, pattern = "(?<=[:digit:]),(?=[:digit:])", ".")
-blength.help <- str_replace_all(blength.help, pattern = "\\([^()]*\\)", replacement = "")
-blength <- str_extract_all(blength.help, pattern = "(?<=\\s)[:digit:]+.?[:digit:]*(?=\\skm)")
+# Clean string "blength"
+bstate <- border.cia$blength %>%
+  str_extract_all(pattern = "(?<=,\\s)(.)*?(?=\\s[:digit:])")
+
+border.cia <- border.cia %>%
+  mutate(blength = str_replace_all(blength, pattern = "(?<=[:digit:]),(?=[:digit:])", "."),
+         blength = str_replace_all(blength, pattern = "\\([^()]*\\)", replacement = ""),
+         blength = str_extract_all(blength, pattern = "(?<=\\s)[:digit:]+.?[:digit:]*(?=\\skm)"))
 
 # Repeat state to conform to dyad format
-state1 <- vector("list", length(bstate))
+state1 <- vector("list", length(border.cia$country))
 
-for(i in seq_along(bstate)){
+# 
+for(i in seq_along(border.cia$country)){
   state1[[i]] <- if (lengths(bstate[i]) == 0) {
-    rep(names(border.len[i]), times = 1)
+    rep(border.cia$country[i], times = 1)
   } else {
-    rep(names(border.len[i]), times = lengths(bstate[i]))
+    rep(border.cia$country[i], times = lengths(bstate[i]))
   }
 }
 
 # Countries with no land borders should get an NA instead of character(0).
 # Thus, they conform to our base data (contiguity)
 bstate[lengths(bstate) == 0] <- NA_character_
-blength[lengths(blength) == 0] <- NA_character_
+border.cia[lengths(border.cia$blength) == 0,] <- NA_character_
 
 # Create a borderlengt.df
 borderlength.df <- tibble(
   state1 = flatten_chr(state1),
   bstate = flatten_chr(bstate),
-  blength = flatten_chr(blength)
+  blength = flatten_chr(border.cia$blength)
 )
 
 # Transform English country names to ISO3 codes
