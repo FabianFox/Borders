@@ -78,8 +78,8 @@ visa <- read_xls(path = "./data/Visa Network Data_1969_2010.xls",
 
 # (2) Prepare data
 # Delete unnecessary rows and columns
-visa <- visa[-1, ]
-visa <- visa[ ,-2]
+visa <- visa[-1,]
+visa <- visa[,-2]
 
 # Self-ties are included as "NA", however, they should be coded as "0".
 visa[is.na(visa)] <- 0
@@ -191,7 +191,6 @@ for (i in seq_along(files)) {
   border.cia[[i]]$terrain <- terrain
 }
 
-# This part needs checking
 # Check here: https://www.cia.gov/library/publications/the-world-factbook/appendix/appendix-d.html
 
 # Name the list elements (country identifier, FIPS105 -> ISO3)
@@ -269,7 +268,9 @@ borderlength.df <- borderlength.df %>%
 
 # Join the individual border lengths to the main data
 border.df <- border.df %>%
-  left_join(y = borderlength.df)
+  left_join(y = borderlength.df) %>%
+  left_join(y = border.cia %>%
+              select(country, terrain), by = c("state1" = "country"))
 
 # Keep only the final data
 rm(list = setdiff(ls(), "border.df"))
