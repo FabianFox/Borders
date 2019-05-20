@@ -3,11 +3,14 @@
 ### Direct Contiguity Data Version 3.20
 ### Download data: 03.04.2018
 
-# Packages
+# Load/install packages
+## -------------------------------------------------------------------------- ##
 if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats)
 
-# Load data
+# Load data:
+# - Direct Contiguity
+## -------------------------------------------------------------------------- ##
 # Directed dyads retrieved from http://www.correlatesofwar.org/data-sets/direct-contiguity
 contdird <- read.csv(file = "./data/contdird.csv", 
                      header = TRUE, stringsAsFactors = FALSE)
@@ -29,13 +32,15 @@ contdird <- contdird %>%
   select(state1, state2, conttype, year) %>%
   arrange(state1, state2)
 
-# Join macro level indicators:
-# The following are added:
+# Join macro level indicators
+## -------------------------------------------------------------------------- ##
+# Data:
 # - World Bank (GDP p.c. and Population)
 # - Polity IV 
 # - Visa Network Data
 
 # World Bank 
+## -------------------------------------------------------------------------- ##
 # (1)
 # Download data (mrv = newest available)
 wb.info <- wb(country = unique(contdird$state1),
@@ -52,6 +57,7 @@ border.df <- contdird %>%
   )
 
 # Polity IV
+## -------------------------------------------------------------------------- ##
 # (1) Load the data retrieved from www.systemicpeace.org/inscrdata.html
 polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2016.sav", 
                                to.data.frame = TRUE,
@@ -69,7 +75,9 @@ border.df <- border.df %>%
          state2.polity = polityIV[match(border.df$state2, polityIV$iso3),]$polity2)
 
 # Visa Network Data
+## -------------------------------------------------------------------------- ##
 # retrieved from https://www.fiw.uni-bonn.de/demokratieforschung/personen/laube/visanetworkdata
+
 # (1) Load data
 visa <- read_xls(path = "./data/Visa Network Data_1969_2010.xls",
                  sheet = 2, range = "C5:FN172", 
@@ -145,10 +153,12 @@ border.df <- border.df %>%
   select(-visa.available)
 
 # The CIA World Factbook 
-# Length of border to neighbouring states
+## -------------------------------------------------------------------------- ##
+# - Length of shared borders
+# - Terrain description  
 
 # Issues: 
-# - States are stored in their respective regional folder
+# - States are stored in their respective regional folder 
 # - Information is a character string
 
 # (1) Get all files (location on hard disk)
@@ -176,6 +186,7 @@ for (i in seq_along(files)) {
   state[i] <- str_extract_all(files[i], pattern = "(?<=/)[:alpha:]{2}(?=.json)")
   
   file <- fromJSON(files[i], simplifyVector = FALSE)
+  
   blength <- file %>%
     .$Geography %>%
     .$`Land boundaries` %>%
@@ -238,7 +249,7 @@ for(i in seq_along(border.cia$country)){
 bstate[lengths(bstate) == 0] <- NA_character_
 border.cia[lengths(border.cia$blength) == 0,] <- NA_character_
 
-# Create a borderlengt.df
+# Create a borderlength.df
 borderlength.df <- tibble(
   state1 = flatten_chr(state1),
   bstate = flatten_chr(bstate),
@@ -272,5 +283,19 @@ border.df <- border.df %>%
   left_join(y = border.cia %>%
               select(country, terrain), by = c("state1" = "country"))
 
+# Create a dyad identifier variable
+## -------------------------------------------------------------------------- ##
+# Function to create a dyad identifier 
+# from: https://stackoverflow.com/questions/52316998/create-unique-id-for-dyads-non-directional
+
+dyadId_fun <- function(x,y) paste(sort(c(x, y)), collapse="_")
+dyadId_fun <- Vectorize(dyadId_fun)
+
+# Apply the function
+border.df <- border.df %>% 
+  mutate(dyadName = dyadId_fun(state1, state2),
+         dyadID = as.numeric(as.factor(dyadName)))
+
 # Keep only the final data
+## -------------------------------------------------------------------------- ##
 rm(list = setdiff(ls(), "border.df"))
