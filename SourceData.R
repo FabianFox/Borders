@@ -39,7 +39,7 @@ contdird <- contdird %>%
 # - Polity IV 
 # - Visa Network Data
 
-# World Bank 
+# World Bank (latest, i.e.: 2017)
 ## -------------------------------------------------------------------------- ##
 # (1)
 # Download data (mrv = newest available)
@@ -294,7 +294,8 @@ dyadId_fun <- Vectorize(dyadId_fun)
 # Apply the function
 border.df <- border.df %>% 
   mutate(dyadName = dyadId_fun(state1, state2),
-         dyadID = as.numeric(as.factor(dyadName)))
+         dyadID = as.numeric(as.factor(dyadName))) %>%
+  as_tibble()
 
 # Keep only the final data
 ## -------------------------------------------------------------------------- ##
