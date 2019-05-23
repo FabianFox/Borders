@@ -2,13 +2,14 @@
 
 # Notes:
 # - Countries that need further checking:
-
-# - Israel borders Egypt but is not yet coded
+#   - Israel borders Egypt but is not yet coded
+#   - Cases with insufficient information:
+#   - 
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, igraph, rio)
+p_load(tidyverse, countrycode, igraph, rio, janitor)
 
 # Load: Source data and border indicator
 ### ------------------------------------------------------------------------ ###
@@ -17,8 +18,10 @@ source("SourceData.R")
 
 # indicator
 indicator.df <- import("O:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
-                        sheet = 1, range = "A1:C637") %>%
-  as_tibble()
+                        sheet = 1) %>%
+  as_tibble() %>%
+  select(1:3, 5:6, 12, 16:17) %>%
+  clean_names()
 
 # INDICATOR
 # Limit observations to African countries
@@ -30,6 +33,14 @@ africa.df <- indicator.df %>%
             funs(cont = countrycode(., "iso3c", "continent", 
                                     custom_match = custom.match))) %>%
   filter(state1_cont == "Africa" | state2_cont == "Africa")
+
+# Conditions for border indicator
+
+# landmark
+# frontier border: fortifications == none & BCP == none (& border agreement == none)
+# checkpoint border: fortification == none & BCP == basic | extended
+# barrier border: fence / wall / additional_fortificatin == yes (but partially)
+# fortified border: fence / wall / additional_fortification == yes 
 
 # SOURCE DATA
 # Prepare border.df
