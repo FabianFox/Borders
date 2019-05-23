@@ -6,7 +6,7 @@
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats)
+p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats, haven)
 
 # Load data:
 # - Direct Contiguity
@@ -31,6 +31,17 @@ contdird <- contdird %>%
          state2 = countrycode(sourcevar = state2no, origin = "cown", destination = "iso3c", custom_match = custom.match)) %>%
   select(state1, state2, conttype, year) %>%
   arrange(state1, state2)
+
+# Join International Border Agreement Dataset (Owsiak et al. 2018)
+# Note: Data up until 2001
+# Created in: IBAD-DataClean.R
+## -------------------------------------------------------------------------- ##
+# Load
+ibad.df <- readRDS("./data/IBAD_Data.rds")
+
+# Join
+contdird <- contdird %>%
+  left_join(ibad.df)
 
 # Join macro level indicators
 ## -------------------------------------------------------------------------- ##
