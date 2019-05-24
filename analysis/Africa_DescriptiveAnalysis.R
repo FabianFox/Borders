@@ -20,7 +20,7 @@ source("SourceData.R")
 indicator.df <- import("O:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
                         sheet = 1) %>%
   as_tibble() %>%
-  select(1:3, 5:6, 12, 16:17) %>%
+  select(1:3, 5:8, 12, 16:17) %>%
   clean_names()
 
 # INDICATOR
