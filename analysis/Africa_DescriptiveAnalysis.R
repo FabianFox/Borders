@@ -2,9 +2,9 @@
 
 # Notes:
 # - Countries that need further checking:
-#   - Israel borders Egypt but is not yet coded
 #   - Cases with insufficient information:
-#   - 
+#   - africa.df %>%
+#        filter(information_density == "low")
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
@@ -48,7 +48,9 @@ africa.df <- indicator.df %>%
 border.df <- border.df %>%
   mutate(
     continent1 = countrycode(state1, "iso3c", "continent", custom_match = c("XKX" = "Europe")),
-    continent2 = countrycode(state2, "iso3c", "continent", custom_match = c("XKX" = "Europe"))
+    continent2 = countrycode(state2, "iso3c", "continent", custom_match = c("XKX" = "Europe")),
+    region1 = countrycode(state1, "iso3c", "region", custom_match = c("XKX" = "Southern Europe")),
+    region2 = countrycode(state2, "iso3c", "region", custom_match = c("XKX" = "Southern Europe"))
   ) 
 
 # Join the source and indicator
@@ -60,6 +62,9 @@ africa.df <- border.df %>%
 
 # Descriptive analysis
 ## -------------------------------------------------------------------------- ##
+
+# Univariate
+##
 
 # Function creates a factor variable of the indicator
 fac_ind <- function(x){
@@ -83,8 +88,22 @@ ind.perc.fig <- africa.df %>%
   summarise(perc = length(typology) / length(africa.df$typology) * 100) %>%
   ggplot(aes(x = fac_ind(typology), y = perc)) +
   geom_bar(stat = "identity") +
-  labs(title = "Border typology (relative distribution), Africa",
-       caption = paste0("N(borders) = ", length(africa.df$typology),
+  labs(caption = paste0("N(borders) = ", length(africa.df$typology),
+                        "\nN(countries) = ", length(unique(africa.df$state1))),
+       x = "", y = "") +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        text = element_text(size = 14),
+        axis.ticks.x = element_line(size = .5))
+
+ind.perc.region.fig <- africa.df %>%
+  group_by(typology, region) %>%
+  summarise(perc = length(typology) / length(africa.df$typology) * 100) %>%
+  ggplot(aes(x = fac_ind(typology), y = perc)) +
+  geom_bar(stat = "identity") +
+  labs(caption = paste0("N(borders) = ", length(africa.df$typology),
                         "\nN(countries) = ", length(unique(africa.df$state1))),
        x = "", y = "") +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
@@ -95,6 +114,8 @@ ind.perc.fig <- africa.df %>%
         axis.ticks.x = element_line(size = .5))
 
 # Bivariate 
+##
+
 # GDP, PolityIV
 border.af.bvars <- africa.df %>%
   group_by(typology) %>%
@@ -119,6 +140,7 @@ gdp.fig <- ggplot(border.af.bvars) +
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))
 
+# PolityIV
 polity.fig <- ggplot(border.af.bvars) +
   geom_bar(aes(x = fac_ind(typology), y = polity.mean), stat = "identity") +
   labs(title = "Mean political system, Africa",
@@ -133,3 +155,12 @@ polity.fig <- ggplot(border.af.bvars) +
         text = element_text(size = 14),
         axis.ticks.x = element_line(size = .5))   
 
+# World Religion (CoW)
+
+# Global Mobility
+
+
+# Save figures
+## -------------------------------------------------------------------------- ##
+ggsave(plot = ind.perc.fig, "./output/figures/Africa_RelativeDistribution.tiff", width = 6, height = 6, unit = 'in', 
+       dpi = 300)
