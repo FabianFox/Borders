@@ -49,6 +49,7 @@ contdird <- contdird %>%
 # - World Bank (GDP p.c. and Population)
 # - Polity IV 
 # - Visa Network Data
+# - CoW World Religion
 
 # World Bank (latest, i.e.: 2017)
 ## -------------------------------------------------------------------------- ##
@@ -70,14 +71,14 @@ border.df <- contdird %>%
 # Polity IV
 ## -------------------------------------------------------------------------- ##
 # (1) Load the data retrieved from www.systemicpeace.org/inscrdata.html
-polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2016.sav", 
+polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2017.sav", 
                                to.data.frame = TRUE,
                                use.value.labels = FALSE)  
 
-# (a) Drop some variables, filter year == 2016 and special treatment of Kosovo
+# (a) Drop some variables, filter year == 2017 and special treatment of Kosovo
 polityIV <- polityIV %>%
   select(ccode, scode, country, year, polity2) %>%
-  filter(year == 2016) %>%
+  filter(year == 2017) %>%
   mutate(iso3 = countrycode(scode, "p4c", "iso3c", custom_match = c("KOS" = "XKX")))
 
 # (3) Join 
@@ -162,6 +163,48 @@ border.df$visa[is.na(border.df$visa) & !is.na(border.df$visa.available)] <- 0
 # Remove auxiliary variables
 border.df <- border.df %>%
   select(-visa.available)
+
+# CoW World Religion Data
+## -------------------------------------------------------------------------- ##
+# retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
+
+relig.df <- import("http://www.correlatesofwar.org/data-sets/world-religion-data/wrp-national-data-1/at_download/file", format = ",") %>%
+  select(1:40, -sumrelig) %>%
+  filter(year == 2010) %>%
+  gather(religion, rel_pop, -year, -name, -state, -pop) %>%
+  mutate(
+    relfam = case_when(
+      religion %in% c(
+        "chrstprot", "chrstcat", "chrstorth", "chrstang", "chrstothr",
+        "chrstgen"
+      ) ~ "chrst",
+      religion %in% c(
+        "judorth", "jdcons", "judref", "judothr", "judgen"
+      ) ~ "jud",
+      religion %in% c(
+        "islmsun", "islmshi", "islmibd", "islmnat", "islmalw", "islmahm",
+        "islmothr", "islmgen"
+      ) ~ "islm",
+      religion %in% c("budmah", "budthr", "budothr", "budgen") ~ "bud",
+      TRUE ~ as.character(religion)
+    ),
+    state = countrycode(state, "cown", "iso3c", custom_match = custom.match)
+  ) %>%
+  group_by(state, relfam) %>%
+  summarise(pop_relfam = sum(rel_pop)) %>%
+  slice(which.max(pop_relfam))
+
+# Join main religious group to border.df
+border.df <- border.df %>%
+  mutate(state1.relig = relig.df[match(border.df$state1, relig.df$state),]$relfam,
+         state2.relig = relig.df[match(border.df$state2, relig.df$state),]$relfam)
+
+# Missing values filled by Pew Research Center: Religious Composition by Country, 2010-2050
+# retrieved from: https://www.pewforum.org/2015/04/02/religious-projection-table/2010/number/all/
+# accessed: 2019/05/31
+
+border.df[border.df$state1 =="SSD",]$state1.relig <- "chrst"
+border.df[border.df$state2 =="SSD",]$state2.relig <- "chrst"
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
