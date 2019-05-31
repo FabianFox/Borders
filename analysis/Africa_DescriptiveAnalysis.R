@@ -17,7 +17,7 @@ p_load(tidyverse, countrycode, igraph, rio, janitor)
 source("SourceData.R")
 
 # indicator
-indicator.df <- import("O:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
+indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
                         sheet = 1) %>%
   as_tibble() %>%
   select(1:3, 5:8, 12, 16:17) %>%
@@ -64,7 +64,7 @@ africa.df <- border.df %>%
 ## -------------------------------------------------------------------------- ##
 
 # Univariate
-##
+# --------------------------------- #
 
 # Function creates a factor variable of the indicator
 fac_ind <- function(x){
@@ -114,18 +114,21 @@ ind.perc.region.fig <- africa.df %>%
         axis.ticks.x = element_line(size = .5))
 
 # Bivariate 
-##
+# --------------------------------- #
 
-# GDP, PolityIV
+# GDP, Polity IV & Religion
+# --------------------------------- #
 border.af.bvars <- africa.df %>%
   group_by(typology) %>%
   summarise(gdp.mean = mean(state1.gdp, na.rm = TRUE),
+            gdp.median = median(state1.gdp, na.rm = TRUE), 
             gdp.sd = sd(state1.gdp, na.rm = TRUE),
-            polity.mean = median(state1.polity, na.rm = TRUE),
+            polity.mean = mean(state1.polity, na.rm = TRUE),
+            polity.median = median(state1.polity, na.rm = TRUE),
             polity.sd = sd(state1.polity, na.rm = TRUE),
             n = n())
 
-# Plots
+# GDP
 gdp.fig <- ggplot(border.af.bvars) +
   geom_bar(aes(x = fac_ind(typology), y = gdp.mean), stat = "identity") +
   labs(title = "Mean GDP per capita, Africa",
@@ -147,7 +150,7 @@ polity.fig <- ggplot(border.af.bvars) +
        caption = paste0("N(borders) = ", sum(border.af.bvars$n),
                         "\nN(countries) = ", 
                         length(unique(africa.df[!is.na(africa.df$state1.polity),]$state1)),
-                        "\nData: PolityIV (2016)"),
+                        "\nData: PolityIV (2017)"),
        x = "", y = "") +
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank(),
@@ -156,8 +159,14 @@ polity.fig <- ggplot(border.af.bvars) +
         axis.ticks.x = element_line(size = .5))   
 
 # World Religion (CoW)
+# --------------------------------- #
+
+relig.fig <- africa.df %>%
+  group_by(state1.relig, typology) %>%
+  summarise(n = n())
 
 # Global Mobility
+# --------------------------------- #
 
 
 # Save figures
