@@ -71,8 +71,7 @@ africa.df <- border.df %>%
 ## -------------------------------------------------------------------------- ##
 # Load dataset and clean
 ethn.df <- import("./data/Appendix_TableA_Partitioned_Ethnicities_Michalopoulos_et_al_2016.xlsx",
-                  sheet = 1, range = "A2:E538"
-) %>%
+                  sheet = 1, range = "A2:E538") %>%
   as_tibble() %>%
   clean_names() %>%
   fill(no) %>%
@@ -94,20 +93,23 @@ ethn.df <- import("./data/Appendix_TableA_Partitioned_Ethnicities_Michalopoulos_
 # Dirty solution to create a directed typology
 # (1) Duplicate dataset, swap country identifiers and rename them
 swap.df <- ethn.df %>%
-  select("state2", "state1", "ethnicity_name") %>%
   rename(
     state1 = state2,
-    state2 = state1,
+    state2 = state1
   )
 
-# (2) Bind back together
+# (2) Bind back together and compute number of shared ethnicities across border
 ethn.df <- ethn.df %>%
-  bind_rows(., swap.df)
+  bind_rows(., swap.df) %>%
+  group_by(state1, state2) %>%
+  mutate(num_share_ethn = n()) %>%
+  distinct(state1, state2, .keep_all = TRUE) %>%
+  select(-ethnicity_name)
 
 # (3) Join to africa.df
 africa.df <- africa.df %>%
   left_join(ethn.df) %>%
-  mutate(share_ethn = ifelse(is.na(ethnicity_name), 0, 1))
+  mutate(share_ethn = ifelse(is.na(num_share_ethn), 0, 1))
 
 # Descriptive analysis
 ## -------------------------------------------------------------------------- ##
