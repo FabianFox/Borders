@@ -64,6 +64,51 @@ africa.df <- border.df %>%
   left_join(africa.df) %>%
   distinct(state1, state2, .keep_all = TRUE)
 
+# Add a measure for partitioned ethnicities
+# Source: Michalopoulos, S., & Papaioannou, E. (2016). The Long-Run Effects of the 
+#         Scramble for Africa. American Economic Review, 106(7), 1802-1848. 
+#         doi:10.1257/aer.20131311
+## -------------------------------------------------------------------------- ##
+# Load dataset and clean
+ethn.df <- import("./data/Appendix_TableA_Partitioned_Ethnicities_Michalopoulos_et_al_2016.xlsx",
+                  sheet = 1, range = "A2:E538"
+) %>%
+  as_tibble() %>%
+  clean_names() %>%
+  fill(no) %>%
+  filter(percent_of_homeland >= 0.1) %>%        # only those that share at least 10% population
+  select(-number_partitions) %>%                # from here: unfold country column / make long
+  group_by(ethnicity_name) %>% 
+  summarise(country  = paste(country_code, collapse =",")) %>%
+  separate(country, into = c("m1", "m2", "m3", "m4")) %>% 
+  nest(-ethnicity_name) %>%
+  mutate(data = map(data, ~(.x %>%
+                              discard(is.na))),
+         colnum = map(data, ncol)) %>%
+  filter(colnum > 1) %>%
+  mutate(data = map(data, ~(.x %>%
+                              combn(., 2, function(x) paste(x, collapse = "_"), simplify = FALSE)))) %>%
+  unnest(data) %>%
+  separate(data, into = c("state1", "state2"), sep = "_") 
+  
+# Dirty solution to create a directed typology
+# (1) Duplicate dataset, swap country identifiers and rename them
+swap.df <- ethn.df %>%
+  select("state2", "state1", "ethnicity_name") %>%
+  rename(
+    state1 = state2,
+    state2 = state1,
+  )
+
+# (2) Bind back together
+ethn.df <- ethn.df %>%
+  bind_rows(., swap.df)
+
+# (3) Join to africa.df
+africa.df <- africa.df %>%
+  left_join(ethn.df) %>%
+  mutate(share_ethn = ifelse(is.na(ethnicity_name), 0, 1))
+
 # Descriptive analysis
 ## -------------------------------------------------------------------------- ##
 
@@ -174,7 +219,7 @@ polity.fig <- ggplot(border.af.bvars) +
   )
 
 # Facetted scatterplot: GDP x PolityIV
-# (1) Add grouped mean of GDP and PolityIV
+# A (1) Add grouped mean of GDP and PolityIV
 gdp_pol.df <- africa.df %>%
   filter(!is.na(state1.gdp) & !is.na(state1.polity)) %>%
   group_by(typology) %>%
@@ -183,12 +228,36 @@ gdp_pol.df <- africa.df %>%
     median_polity = median(state1.polity)
   )
 
+# A (2) Facetted scatterplot
 gdp_pol.fig <- ggplot(data = gdp_pol.df) +
-  geom_jitter(data = subset(gdp_pol.df, typology != "fortified border"), aes(x = log(state1.gdp), y = state1.polity)) +
-  geom_text_repel(data = subset(gdp_pol.df, typology == "fortified border"), 
-                  aes(log(state1.gdp), y = state1.polity, label = paste(state1, state2, sep = "-")))+
+  geom_jitter(data = gdp_pol.df, aes(x = log(state1.gdp), y = state1.polity)) +
   facet_grid(~ factor(typology,
     levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
+  )) +
+  geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
+  geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
+  scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
+  labs(x = "GDP p.c. (logged)", y = "PolityIV") +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+# B (1) Zoomed in scatterplot for barrier & fortified borders
+gdp_pol_fort.df <- gdp_pol.df %>%
+  filter(typology %in% c("fortified border", "barrier border"))
+
+# B (2)
+gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1.gdp), y = state1.polity)) +
+  geom_jitter() +
+  geom_text_repel(label = paste(gdp_pol_fort.df$state1, gdp_pol_fort.df$state2, sep = "-"),
+                  segment.color = NA) +
+  facet_grid(~ factor(typology,
+                      levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
   )) +
   geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
   geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
@@ -233,7 +302,7 @@ africa.df <- africa.df %>%
 
 # Next steps depend on our conceptualization of border infrastructures. Are they
 # always directed (i.e. allow asymmetry) or are they undirected (i.e. symmetric).
-# For the time being, I go with directed dyads.
+# For the time being, I tend to go with directed dyads.
 
 # Create a directed dyadic dataset
 # (1) all unique combinations of religion
@@ -479,9 +548,15 @@ ggsave(
   dpi = 300
 )
 
-# Scatterplot
+# Scatterplot (A)
 ggsave(
   plot = gdp_pol.fig, "./output/figures/Africa_ScatterGDP_Pol.tiff", width = 6, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Scatterplot (B)
+ggsave(
+  plot = gdp_pol_fort.fig, "./output/figures/Africa_ScatterGDP_Pol_Fort.tiff", width = 6, height = 6, unit = "in",
   dpi = 300
 )
 
