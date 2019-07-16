@@ -76,7 +76,7 @@ ethn.df <- import("./data/Appendix_TableA_Partitioned_Ethnicities_Michalopoulos_
   clean_names() %>%
   fill(no) %>%
   filter(percent_of_homeland >= 0.1) %>%        # only those that share at least 10% population
-  select(-number_partitions) %>%                # from here: unfold country column / make long
+  select(-number_partitions) %>%                # from here: unfold country column, i.e. make long
   group_by(ethnicity_name) %>% 
   summarise(country  = paste(country_code, collapse =",")) %>%
   separate(country, into = c("m1", "m2", "m3", "m4")) %>% 
