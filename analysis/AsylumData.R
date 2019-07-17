@@ -4,7 +4,7 @@
 ### ------------------------------------------------------------------------###
 
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats, 
+p_load(tidyverse, rio, rvest, janitor, eurostat, countrycode, wbstats, 
        lubridate, countrycode, ggrepel, tidyr, stringr)
 
 # Asylum data
@@ -24,12 +24,12 @@ p_load(tidyverse, rio, rvest, janitor, qdap, eurostat, countrycode, wbstats,
 asylum.df <- get_eurostat("tps00191", time_format = "num", 
                           stringsAsFactors = FALSE,
                           filters = list(asyl_app = "ASY_APP", 
-                                      time = 2015:2017)) %>%
+                                      time = 2015:2018)) %>%
   select(country = geo, applicants = values, year = time) %>%
   filter(country != "EU28") %>%
   mutate(country = countrycode(country, "eurostat", "iso3c")) 
 
-# First instance decisions: Recognition rates (migr_asydcfsta, accessed: 16.11.2018)
+# First instance decisions: Recognition rates (migr_asydcfsta, accessed: 17.07.2019)
 asylum_decisions.df <- read_csv("./FRAN-reports/migr_asydcfsta_1_Data.csv") %>%
   rename_all(tolower) %>%
   rename(year = time) %>%
@@ -38,12 +38,20 @@ asylum_decisions.df <- read_csv("./FRAN-reports/migr_asydcfsta_1_Data.csv") %>%
          sex == "Total",
          age == "Total",
          decision %in% c("Total", "Total positive decisions", "Rejected"),
-         !geo %in% c("Total", "European Union (current composition)", "Turkey")) %>%
+         !geo %in% c("Total", "European Union - 28 countries", "Turkey")) %>%
   mutate(country = countrycode(geo, origin = "country.name.en", destination = "iso3c"),
          value = as.numeric(str_replace_all(value, ",", ""))) %>%
   select(-unit, -citizen, -sex, -age, -geo) %>%
   spread(decision, value) %>%
-  clean_names() %>%
+  clean_names()
+
+# Ireland has missing values due to (b) "break in time series";
+# I use the available statistics:
+asylum_decisions.df[65,6] <- 760
+asylum_decisions.df <- asylum_decisions.df[-82,]
+
+# Compute rejection and recognition rates
+asylum_decisions.df <- asylum_decisions.df %>%
   mutate(rejection_rate = (total - total_positive_decisions) / total * 100,
          recognition_rate = (total - rejected) / total * 100)
 
@@ -57,7 +65,7 @@ asylum.df <- asylum.df %>%
 # Download data (mrv = newest available)
 wb.info <- wb(country = asylum.df$country,
               indicator = "SP.POP.TOTL", 
-              startdate = 2015, enddate = 2017,
+              startdate = 2015, enddate = 2018,
               return_wide = TRUE) %>%
   select(iso3c, population = SP.POP.TOTL, year = date) %>%
   mutate(year = as.numeric(year))
@@ -66,7 +74,6 @@ wb.info <- wb(country = asylum.df$country,
 asylum.df <- asylum.df %>%
   left_join(wb.info, by = c("country" = "iso3c", "year")) %>%
   mutate(applicants_per1000 = round(applicants / (population / 1000), 2)) 
-
 
 # Infringement procedures 
 ### ------------------------------------------------------------------------###
@@ -96,7 +103,7 @@ infringement.df <- map(urls, ext_table) %>%
   as_tibble() %>%
   clean_names() %>%
   remove_empty(c("rows", "cols")) %>%
-  mutate_if(is.character, scrubber) %>%
+  mutate_if(is.character, str_squish) %>%
   mutate(country = countrycode(country, "country.name.en", "iso3c"),
          year = as.numeric(str_extract(decision_date, "(?<=/)[:digit:]{4}")))
 
@@ -113,14 +120,13 @@ asylum.df <- asylum.df %>%
   left_join(infringement.join) %>%
   mutate(lawsuits = ifelse(is.na(lawsuits), 0, lawsuits))
 
-
 # ParlGov Data
 ### ------------------------------------------------------------------------###
 
 # ParlGov data (http://www.parlgov.org/, accessed: 15.11.2018)
 election.df <- import("./FRAN-reports/view_election.csv") %>%
   mutate(election_date = as_date(election_date)) %>%
-  filter(between(year(election_date), 2010, 2017), 
+  filter(between(year(election_date), 2010, 2018), 
          country_name_short %in% unique(asylum.df$country),
          election_type == "parliament") %>%
   group_by(country_name_short, election_date) %>%
@@ -148,7 +154,6 @@ asylum.df <- asylum.df %>%
          EU28 = countrycode(country, "iso3c", "eu28")) %>%
   filter(EU28 == "EU")
 
-
 # Temporary border controls Data
 ### ------------------------------------------------------------------------###
 # Data on temporarily reinstated border controls in the Schengen Area
@@ -157,10 +162,10 @@ asylum.df <- asylum.df %>%
 # pdf: https://ec.europa.eu/home-affairs/sites/homeaffairs/files/what-we-do/policies/borders-and-visas/schengen/reintroduction-border-control/docs/ms_notifications_-_reintroduction_of_border_control_en.pdf
 
 # Location of file
-loc <- "./FRAN-reports/Member States' Notifications of Reintroduction of border control.xlsx"
+loc <- "./FRAN-reports/ms_notifications_-_reintroduction_of_border_control_en.xlsx"
 
 # Load the data
-bcontrol.df <- import(loc)[2:96,] %>%
+bcontrol.df <- import(loc)[3:112,] %>%
   setNames(.[1,]) %>%
   .[-1,]
 
