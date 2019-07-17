@@ -295,7 +295,7 @@ intra.rejection.fig <- intra.rejection.df %>%
        caption = "Source: Own computation based on migr_asydcfsta (Eurostat 2018)") +
   ylab("") +
   xlab("") +
-  scale_x_continuous(breaks = seq(2015, 2017, 1)) +
+  scale_x_continuous(breaks = seq(2015, 2018, 1)) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank(),
@@ -310,7 +310,7 @@ recognition.fig <- asylum.df %>%
   facet_wrap(~country) +
   ylab("") +
   xlab("") +
-  scale_x_continuous(breaks = seq(2015, 2017, 1)) +
+  scale_x_continuous(breaks = seq(2015, 2018, 1)) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank(),
