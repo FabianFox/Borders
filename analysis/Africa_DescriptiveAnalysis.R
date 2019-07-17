@@ -5,6 +5,7 @@
 #   - Cases with insufficient information:
 #   - africa.df %>%
 #        filter(information_density == "low")
+# - Data for administrative and police capacities
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
@@ -109,7 +110,8 @@ ethn.df <- ethn.df %>%
 # (3) Join to africa.df
 africa.df <- africa.df %>%
   left_join(ethn.df) %>%
-  mutate(share_ethn = ifelse(is.na(num_share_ethn), 0, 1))
+  mutate(share_ethn = ifelse(is.na(num_share_ethn), 0, 1),
+         num_share_ethn = ifelse(is.na(num_share_ethn), 0, num_share_ethn))
 
 # Descriptive analysis
 ## -------------------------------------------------------------------------- ##
@@ -310,7 +312,7 @@ africa.df <- africa.df %>%
 # (1) all unique combinations of religion
 relig_comb <- expand(border.df, state1.relig, state2.relig) %>%
   mutate(combs = paste0(comb = paste(state1.relig, state2.relig, sep = "_"))) %>%
-  .$combs
+  pull(combs)
 
 # (2) Make a dyadic dataset
 dyad.df <- africa.df %>%
