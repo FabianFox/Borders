@@ -523,7 +523,6 @@ pol_ratio_dyad.fig <- dyad.df %>%
 
 # Religion by typology
 # --------------------------------- #
-
 border_relig.df <- dyad.df %>%
   group_by(fdyad_typ, fdyad_shrelig) %>%
   count(fdyad_shrelig) %>%
@@ -534,6 +533,28 @@ border_relig.fig <- border_relig.df %>%
   ggplot() +
   geom_bar(aes(x = fdyad_typ, y = perc, fill = fdyad_shrelig), stat = "identity") +
   scale_fill_grey(guide = guide_legend(title = "Religion")) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  labs(x = "", y = "") +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5)
+  )
+
+# Ethnicity by typology
+# --------------------------------- #
+border_ethn.df <- dyad.df %>%
+  group_by(share_ethn, fdyad_typ) %>%
+  count(fdyad_typ) %>%
+  group_by(share_ethn) %>%
+  mutate(perc = n / sum(n) * 100)
+
+border_ethn.fig <- border_ethn.df %>%
+  ggplot() +
+  geom_bar(aes(x = share_ethn, y = perc, fill = fdyad_typ), stat = "identity") +
+  scale_fill_grey(guide = guide_legend(title = "Shared")) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
   labs(x = "", y = "") +
   theme_minimal() +
