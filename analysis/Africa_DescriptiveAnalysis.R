@@ -586,14 +586,14 @@ border_relig.fig <- border_relig.df %>%
 # --------------------------------- #
 border_ethn.df <- dyad.df %>%
   group_by(fdyad_typ, share_ethn) %>%
-  count(fdyad_typ) %>%
-  group_by(share_ethn) %>%
+  count(share_ethn) %>%
+  group_by(fdyad_typ) %>%
   mutate(perc = n / sum(n) * 100)
 
 border_ethn.fig <- border_ethn.df %>%
   ggplot() +
-  geom_bar(aes(x = share_ethn, y = perc, fill = fdyad_typ), stat = "identity") +
-  scale_fill_grey(guide = guide_legend(title = "Shared")) +
+  geom_bar(aes(x = fdyad_typ, y = perc, fill = factor(share_ethn, labels = c("No", "Yes"))), stat = "identity") +
+  scale_fill_grey(guide = guide_legend(title = "Shared ethnicities")) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
   labs(x = "", y = "") +
   theme_minimal() +
