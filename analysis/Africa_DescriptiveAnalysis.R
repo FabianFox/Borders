@@ -40,11 +40,11 @@ africa.df <- indicator.df %>%
   filter(state1_cont == "Africa" | state2_cont == "Africa")
 
 # Conditions for border indicator
-
+### ------------------------------------------------------------------------ ###
 # landmark
 # frontier border: fortifications == none & BCP == none (& border agreement == none)
 # checkpoint border: fortification == none & BCP == basic | extended
-# barrier border: fence / wall / additional_fortificatin == yes (but partially!)
+# barrier border: fence / wall / additional_fortification == yes (but partially!)
 # fortified border: fence / wall / additional_fortification == yes
 
 # SOURCE DATA
@@ -80,7 +80,7 @@ ethn.df <- import("./data/Appendix_TableA_Partitioned_Ethnicities_Michalopoulos_
   select(-number_partitions) %>%                # from here: unfold country column, i.e. make long
   group_by(ethnicity_name) %>% 
   summarise(country  = paste(country_code, collapse =",")) %>%
-  separate(country, into = c("m1", "m2", "m3", "m4")) %>% 
+  separate(country, into = c("m1", "m2", "m3", "m4")) %>%        # ignore warning message ("Expected 4 pieces...")
   nest(-ethnicity_name) %>%
   mutate(data = map(data, ~(.x %>%
                               discard(is.na))),
@@ -113,18 +113,30 @@ africa.df <- africa.df %>%
   mutate(share_ethn = ifelse(is.na(num_share_ethn), 0, 1),
          num_share_ethn = ifelse(is.na(num_share_ethn), 0, num_share_ethn))
 
-# Descriptive analysis
-## -------------------------------------------------------------------------- ##
-
 # Function creates a factor variable of the indicator
+## -------------------------------------------------------------------------- ##
 fac_ind <- function(x) {
   factor(x, levels = c("landmark border", "frontier border", "checkpoint border", 
                        "barrier border", "fortified border"))
 }
 
+# Descriptive analysis
+## -------------------------------------------------------------------------- ##
+# Basic description
+# Number of African states (p. 10)
+africa.dim <- tibble(
+  countries = with(africa.df, unique(c(state1, state2))),
+  continent = countrycode(countries, "iso3c", "continent")
+) %>%
+  group_by(continent) %>%
+  mutate(n_states = length(continent)) %>%
+  distinct(continent, n_states, .keep_all = TRUE)
+
+# Number of bidrectional dyads
+n_borders <- dim(africa.df)
+  
 # Univariate
 # --------------------------------- #
-
 # Distribution of border types
 # Absolute
 ind.dist.fig <- ggplot(africa.df, aes(x = fac_ind(typology))) +
@@ -138,7 +150,7 @@ ind.dist.fig <- ggplot(africa.df, aes(x = fac_ind(typology))) +
   )
 
 # Distribution
-# Relative
+# Relative (Figure 1)
 ind.perc.fig <- africa.df %>%
   group_by(typology) %>%
   summarise(perc = length(typology) / length(africa.df$typology) * 100) %>%
@@ -160,36 +172,55 @@ ind.perc.fig <- africa.df %>%
     axis.ticks.x = element_line(size = .5)
   )
 
+# Descriptive summary of independent
+# variables
+# --------------------------------- #
+vars <- c("state1_gdp", "state1_polity", "share_ethn")
+
+africa_descriptive <- africa.df %>%
+  summarise_at(vars, list(~mean(., na.rm = T), 
+                          ~sd(., na.rm = T), 
+                          ~min(., na.rm = T), 
+                          ~max(., na.rm = T), 
+                          ~sum(!is.na(.)))
+               )
+
 # By regions
+# --------------------------------- #
 
 # Bivariate
 # --------------------------------- #
 
+# States have multiple borders. Each border influences the descriptive statistics. 
+# Hence, states with a greater number of borders exert a heavier influence on the
+# statistics such as the median and mean. 
+
 # GDP, Polity IV & Religion
 # --------------------------------- #
 # Summary stats
-border.af.bvars <- africa.df %>%
+border_af_bvars <- africa.df %>%
   group_by(typology) %>%
-  summarise(
-    gdp.mean = mean(state1.gdp, na.rm = TRUE),
-    gdp.median = median(state1.gdp, na.rm = TRUE),
-    gdp.sd = sd(state1.gdp, na.rm = TRUE),
-    polity.mean = mean(state1.polity, na.rm = TRUE),
-    polity.median = median(state1.polity, na.rm = TRUE),
-    polity.sd = sd(state1.polity, na.rm = TRUE),
-    n = n()
+  summarise_at(vars[1:2],
+               list(~mean(., na.rm = T), 
+                    ~sd(., na.rm = T), 
+                    ~min(., na.rm = T), 
+                    ~max(., na.rm = T), 
+                    ~sum(!is.na(.)))
   )
 
 # GDP
-gdp.fig <- ggplot(border.af.bvars) +
-  geom_bar(aes(x = fac_ind(typology), y = gdp.mean), stat = "identity") +
+# World Bank Indicators: "NY.GDP.PCAP.CD", "SP.POP.TOTL"
+# Year: 2018 (accessed: 2018/08/08)
+# --------------------------------- #
+gdp.fig <- ggplot(border_af_bvars) +
+  geom_bar(aes(x = fac_ind(typology), y = state1_gdp_mean), stat = "identity") +
   labs(
     title = "Mean GDP per capita, Africa",
     caption = paste0(
-      "N(borders) = ", sum(border.af.bvars$n),
+      "N(borders) = ", sum(border_af_bvars$state1_gdp_sum),
       "\nN(countries) = ",
-      length(unique(africa.df[!is.na(africa.df$state1.gdp), ]$state1)),
-      "\nData: WorldBank (2017)"
+      length(unique(africa.df[!is.na(africa.df$state1_gdp),]$state1)),
+      "\nData: WorldBank (2018)"
     ),
     x = "", y = ""
   ) +
@@ -202,14 +233,17 @@ gdp.fig <- ggplot(border.af.bvars) +
   )
 
 # PolityIV
-polity.fig <- ggplot(border.af.bvars) +
-  geom_bar(aes(x = fac_ind(typology), y = polity.mean), stat = "identity") +
+# Variable: Polity2
+# Year: 2017 
+# --------------------------------- #
+polity.fig <- ggplot(border_af_bvars) +
+  geom_bar(aes(x = fac_ind(typology), y = state1_polity_mean), stat = "identity") +
   labs(
     title = "Mean political system, Africa",
     caption = paste0(
-      "N(borders) = ", sum(border.af.bvars$n),
+      "N(borders) = ", sum(border_af_bvars$state1_polity_sum),
       "\nN(countries) = ",
-      length(unique(africa.df[!is.na(africa.df$state1.polity), ]$state1)),
+      length(unique(africa.df[!is.na(africa.df$state1_polity),]$state1)),
       "\nData: PolityIV (2017)"
     ),
     x = "", y = ""
@@ -223,18 +257,20 @@ polity.fig <- ggplot(border.af.bvars) +
   )
 
 # Facetted scatterplot: GDP x PolityIV
+# Figure 2
+# --------------------------------- #
 # A (1) Add grouped mean of GDP and PolityIV
 gdp_pol.df <- africa.df %>%
-  filter(!is.na(state1.gdp) & !is.na(state1.polity)) %>%
+  filter(!is.na(state1_gdp) & !is.na(state1_polity)) %>%
   group_by(typology) %>%
   mutate(
-    median_gdp = median(log(state1.gdp)),
-    median_polity = median(state1.polity)
+    median_gdp = median(log(state1_gdp)),
+    median_polity = median(state1_polity)
   )
 
 # A (2) Facetted scatterplot
 gdp_pol.fig <- ggplot(data = gdp_pol.df) +
-  geom_jitter(data = gdp_pol.df, aes(x = log(state1.gdp), y = state1.polity)) +
+  geom_jitter(data = gdp_pol.df, aes(x = log(state1_gdp), y = state1_polity)) +
   facet_grid(~ factor(typology,
     levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
   )) +
@@ -252,11 +288,14 @@ gdp_pol.fig <- ggplot(data = gdp_pol.df) +
   )
 
 # B (1) Zoomed in scatterplot for barrier & fortified borders
+# Figure 3
+# --------------------------------- #
 gdp_pol_fort.df <- gdp_pol.df %>%
   filter(typology %in% c("fortified border", "barrier border"))
 
-# B (2)
-gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1.gdp), y = state1.polity)) +
+# B (2)                         # ---------------------------------------------------------------------------------------------------
+# ADD N_borders and N_countries # ---------------------------------------------------------------------------------------------------
+gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1_gdp), y = state1_polity)) +
   geom_jitter() +
   geom_text_repel(label = paste(gdp_pol_fort.df$state1, gdp_pol_fort.df$state2, sep = "-"),
                   segment.color = NA) +
@@ -278,13 +317,13 @@ gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1.gdp), y = 
 
 # World Religion (CoW)
 # --------------------------------- #
-
 relig.fig <- africa.df %>%
-  group_by(state1.relig, typology) %>%
+  group_by(state1_relig, typology) %>%
   summarise(n = n())
 
 # Global Mobility
 # --------------------------------- #
+
 
 # Dyadic analysis
 ## -------------------------------------------------------------------------- ##
@@ -296,13 +335,13 @@ swap.df <- africa.df %>%
   rename(
     state1 = state2,
     state2 = state1,
-    state2.typology = typology
+    state2_typology = typology
   )
 
 # (2) Join to original dataset
 africa.df <- africa.df %>%
   left_join(swap.df) %>%
-  rename(state1.typology = typology)
+  rename(state1_typology = typology)
 
 # Next steps depend on our conceptualization of border infrastructures. Are they
 # always directed (i.e. allow asymmetry) or are they undirected (i.e. symmetric).
@@ -310,14 +349,14 @@ africa.df <- africa.df %>%
 
 # Create a directed dyadic dataset
 # (1) all unique combinations of religion
-relig_comb <- expand(border.df, state1.relig, state2.relig) %>%
-  mutate(combs = paste0(comb = paste(state1.relig, state2.relig, sep = "_"))) %>%
+relig_comb <- expand(border.df, state1_relig, state2_relig) %>%
+  mutate(combs = paste0(comb = paste(state1_relig, state2_relig, sep = "_"))) %>%
   pull(combs)
 
 # (2) Make a dyadic dataset
 dyad.df <- africa.df %>%
-  mutate(dyad_typ = paste(state1.typology, state2.typology, sep = "_"),
-         dyad_relig = paste(state1.relig, state2.relig, sep = "_")) %>%
+  mutate(dyad_typ = paste(state1_typology, state2_typology, sep = "_"),
+         dyad_relig = paste(state1_relig, state2_relig, sep = "_")) %>%
   
   # distinct(dyadID, .keep_all = TRUE) %>%                 # undirected dyad
   mutate(fdyad_typ = factor(dyad_typ, levels = c(
@@ -393,7 +432,7 @@ dyad.df <- dyad.df %>%
       ),
     fdyad_shrelig = 
       case_when(
-        state1.relig == state2.relig ~ "symmetric",
+        state1_relig == state2_relig ~ "symmetric",
         TRUE ~ "asymmetric")
   ) %>%
   mutate(ind_symmetry = ifelse(fdyad_typ %in% c("FF", "LL", "CC", "BB", "WW"), 1, 0))
@@ -409,21 +448,21 @@ dyad.df <- dyad.df %>%
   mutate(
     
     # GDP
-    diffGDP = state1.gdp - state2.gdp,
-    absdiffGDP = abs(state1.gdp - state2.gdp),
-    ratioGDP = state1.gdp / state2.gdp,
-    absratioGDP = ifelse(ratioGDP < 1 & symmetry == 1, 1 / ratioGDP, ratioGDP), # compute greater ratio for symmetric dyads
+    diffGDP = state1_gdp - state2_gdp,
+    absdiffGDP = abs(state1_gdp - state2_gdp),
+    ratioGDP = state1_gdp / state2_gdp,
+    absratioGDP = ifelse(ratioGDP < 1 & ind_symmetry == 1, 1 / ratioGDP, ratioGDP), # compute greater ratio for symmetric dyads
     
     # Polity
-    diffPol = state1.polity - state2.polity,
-    absdiffPol = abs(state1.polity - state2.polity),
-    ratioPol =  state1.polity / state2.polity,
-    absratioPol = ifelse(ratioPol < 1 & symmetry == 1, 1 / ratioPol, ratioPol)
+    diffPol = state1_polity - state2_polity,
+    absdiffPol = abs(state1_polity - state2_polity),
+    ratioPol =  state1_polity / state2_polity,
+    absratioPol = ifelse(ratioPol < 1 & ind_symmetry == 1, 1 / ratioPol, ratioPol)
   )
 
 # Absolute GDP ratio by border typology
 dyad.vars <- dyad.df %>%
-  filter(!is.na(state1.gdp) & !is.na(state2.gdp)) %>%
+  filter(!is.na(state1_gdp) & !is.na(state2_gdp)) %>%
   group_by(fdyad_typ) %>%
   summarise(
     mGDPratio = mean(absratioGDP),
@@ -543,10 +582,10 @@ border_relig.fig <- border_relig.df %>%
     axis.ticks.x = element_line(size = .5)
   )
 
-# Ethnicity by typology
+# Typology by ethnicity
 # --------------------------------- #
 border_ethn.df <- dyad.df %>%
-  group_by(share_ethn, fdyad_typ) %>%
+  group_by(fdyad_typ, share_ethn) %>%
   count(fdyad_typ) %>%
   group_by(share_ethn) %>%
   mutate(perc = n / sum(n) * 100)
@@ -567,18 +606,22 @@ border_ethn.fig <- border_ethn.df %>%
 
 # Save figures
 ## -------------------------------------------------------------------------- ##
+
+# Figure 1
 # Relative distribution of border infrastructure
 ggsave(
   plot = ind.perc.fig, "./output/figures/Africa_RelativeDistribution.tiff", width = 6, height = 6, unit = "in",
   dpi = 300
 )
 
+# Figure 2
 # Scatterplot (A)
 ggsave(
   plot = gdp_pol.fig, "./output/figures/Africa_ScatterGDP_Pol.tiff", width = 6, height = 6, unit = "in",
   dpi = 300
 )
 
+# Figure 3
 # Scatterplot (B)
 ggsave(
   plot = gdp_pol_fort.fig, "./output/figures/Africa_ScatterGDP_Pol_Fort.tiff", width = 6, height = 6, unit = "in",
