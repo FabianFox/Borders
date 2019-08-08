@@ -3,6 +3,9 @@
 ### Direct Contiguity Data Version 3.20
 ### Download data: 03.04.2018
 
+# Notes & Issues
+# - Add data on territorial disputes: https://www.paulhensel.org/icowterr.html
+
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("pacman")) install.packages("pacman")
@@ -51,7 +54,9 @@ contdird <- contdird %>%
 # - Visa Network Data
 # - CoW World Religion
 
-# World Bank (latest, i.e.: 2017)
+# World Bank
+# World Bank Indicators: "NY.GDP.PCAP.CD", "SP.POP.TOTL"
+# Year: 2018 (accessed: 2018/08/08)
 ## -------------------------------------------------------------------------- ##
 # (1)
 # Download data (mrv = newest available)
@@ -62,13 +67,15 @@ wb.info <- wb(country = unique(contdird$state1),
 # (2) Match to base data
 border.df <- contdird %>%
   mutate(
-    state1.pop = wb.info[match(contdird$state1, wb.info$iso3c),]$SP.POP.TOTL,
-    state2.pop = wb.info[match(contdird$state2, wb.info$iso3c),]$SP.POP.TOTL,
-    state1.gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$NY.GDP.PCAP.CD,
-    state2.gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD
+    state1_pop = wb.info[match(contdird$state1, wb.info$iso3c),]$SP.POP.TOTL,
+    state2_pop = wb.info[match(contdird$state2, wb.info$iso3c),]$SP.POP.TOTL,
+    state1_gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$NY.GDP.PCAP.CD,
+    state2_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD
   )
 
 # Polity IV
+# Variable: Polity2
+# Year: 2017 
 ## -------------------------------------------------------------------------- ##
 # (1) Load the data retrieved from www.systemicpeace.org/inscrdata.html
 polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2017.sav", 
@@ -79,12 +86,12 @@ polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2017.sav",
 polityIV <- polityIV %>%
   select(ccode, scode, country, year, polity2) %>%
   filter(year == 2017) %>%
-  mutate(iso3 = countrycode(scode, "p4c", "iso3c", custom_match = c("KOS" = "XKX")))
+  mutate(iso3 = countrycode(scode, "p4c", "iso3c", custom_match = c("KOS" = "XKX", "GMY" = "DEU")))
 
 # (3) Join 
 border.df <- border.df %>%
-  mutate(state1.polity = polityIV[match(border.df$state1, polityIV$iso3),]$polity2,
-         state2.polity = polityIV[match(border.df$state2, polityIV$iso3),]$polity2)
+  mutate(state1_polity = polityIV[match(border.df$state1, polityIV$iso3),]$polity2,
+         state2_polity = polityIV[match(border.df$state2, polityIV$iso3),]$polity2)
 
 # Visa Network Data
 ## -------------------------------------------------------------------------- ##
@@ -196,15 +203,15 @@ relig.df <- import("http://www.correlatesofwar.org/data-sets/world-religion-data
 
 # Join main religious group to border.df
 border.df <- border.df %>%
-  mutate(state1.relig = relig.df[match(border.df$state1, relig.df$state),]$relfam,
-         state2.relig = relig.df[match(border.df$state2, relig.df$state),]$relfam)
+  mutate(state1_relig = relig.df[match(border.df$state1, relig.df$state),]$relfam,
+         state2_relig = relig.df[match(border.df$state2, relig.df$state),]$relfam)
 
 # Missing values filled by Pew Research Center: Religious Composition by Country, 2010-2050
 # retrieved from: https://www.pewforum.org/2015/04/02/religious-projection-table/2010/number/all/
 # accessed: 2019/05/31
 
-border.df[border.df$state1 =="SSD",]$state1.relig <- "chrst"
-border.df[border.df$state2 =="SSD",]$state2.relig <- "chrst"
+border.df[border.df$state1 =="SSD",]$state1_relig <- "chrst"
+border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
