@@ -7,6 +7,9 @@
 #        filter(information_density == "low")
 # - Data for administrative and police capacities
 
+# Issues:
+# - Add religion to descriptive summary
+
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
 if (!require("pacman")) install.packages("pacman")
@@ -183,7 +186,8 @@ africa_descriptive <- africa.df %>%
                           ~min(., na.rm = T), 
                           ~max(., na.rm = T), 
                           ~sum(!is.na(.)))
-               )
+               ) %>%
+  mutate_all(~round(., digits = 3))
 
 # By regions
 # --------------------------------- #
@@ -339,7 +343,7 @@ swap.df <- africa.df %>%
   )
 
 # (2) Join to original dataset
-africa.df <- africa.df %>%
+africa_dyad.df <- africa.df %>%
   left_join(swap.df) %>%
   rename(state1_typology = typology)
 
@@ -354,7 +358,7 @@ relig_comb <- expand(border.df, state1_relig, state2_relig) %>%
   pull(combs)
 
 # (2) Make a dyadic dataset
-dyad.df <- africa.df %>%
+dyad.df <- africa_dyad.df %>%
   mutate(dyad_typ = paste(state1_typology, state2_typology, sep = "_"),
          dyad_relig = paste(state1_relig, state2_relig, sep = "_")) %>%
   
