@@ -4,7 +4,7 @@
 ### Download data: 03.04.2018
 
 # Notes & Issues
-# - Add data on territorial disputes: https://www.paulhensel.org/icowterr.html
+# - 
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
@@ -35,6 +35,16 @@ contdird <- contdird %>%
   select(state1, state2, conttype, year) %>%
   arrange(state1, state2)
 
+# Join macro level indicators
+## -------------------------------------------------------------------------- ##
+# Data:
+# - IBAD (Border Agreement Data)
+# - World Bank (GDP and Population -> GDP per capita)
+# - Polity IV 
+# - Visa Network Data
+# - CoW: World Religion
+# - CoW: Militarized Interstate Disputes (v4.3) 
+
 # Join International Border Agreement Dataset (Owsiak et al. 2018)
 # Note: Data up until 2001
 # Created in: IBAD-DataClean.R
@@ -45,14 +55,6 @@ ibad.df <- readRDS("./data/IBAD_Data.rds")
 # Join
 contdird <- contdird %>%
   left_join(ibad.df)
-
-# Join macro level indicators
-## -------------------------------------------------------------------------- ##
-# Data:
-# - World Bank (GDP p.c. and Population)
-# - Polity IV 
-# - Visa Network Data
-# - CoW World Religion
 
 # World Bank
 # World Bank Indicators: "NY.GDP.PCAP.CD", "SP.POP.TOTL"
@@ -171,7 +173,7 @@ border.df$visa[is.na(border.df$visa) & !is.na(border.df$visa.available)] <- 0
 border.df <- border.df %>%
   select(-visa.available)
 
-# CoW World Religion Data
+# CoW: World Religion Data
 ## -------------------------------------------------------------------------- ##
 # retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
 
@@ -212,6 +214,12 @@ border.df <- border.df %>%
 
 border.df[border.df$state1 =="SSD",]$state1_relig <- "chrst"
 border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
+
+# CoW: Militarized Interstate Disputes (v4.3) 
+## -------------------------------------------------------------------------- ##
+# retrieved from http://www.correlatesofwar.org/data-sets/MIDs
+
+# dispute.df <- haven::read_dta("./data/dyadic_mid_31_may_2018.dta")
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
