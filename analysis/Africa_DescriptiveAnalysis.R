@@ -9,6 +9,9 @@
 
 # Issues:
 # - Add religion to descriptive summary
+# - set seed for reproducible jittering
+# - add TCD borders where the Lake Chad has fallen dry
+# - add number of observations to remaining plots
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
@@ -136,9 +139,10 @@ africa.dim <- tibble(
   distinct(continent, n_states, .keep_all = TRUE)
 
 # Number of bidrectional dyads
-n_borders <- dim(africa.df)
+n_borders <- dim(africa.df)[1]
   
-# Univariate
+# Overview: Dependent variable
+# Indicator
 # --------------------------------- #
 # Distribution of border types
 # Absolute
@@ -192,6 +196,8 @@ africa_descriptive <- africa.df %>%
 # By regions
 # --------------------------------- #
 
+# / -------------- /
+
 # Bivariate
 # --------------------------------- #
 
@@ -199,7 +205,8 @@ africa_descriptive <- africa.df %>%
 # Hence, states with a greater number of borders exert a heavier influence on the
 # statistics such as the median and mean. 
 
-# GDP, Polity IV & Religion
+# GDP, Polity IV & Religion by 
+# typology
 # --------------------------------- #
 # Summary stats
 border_af_bvars <- africa.df %>%
@@ -274,13 +281,15 @@ gdp_pol.df <- africa.df %>%
 
 # A (2) Facetted scatterplot
 gdp_pol.fig <- ggplot(data = gdp_pol.df) +
-  geom_jitter(data = gdp_pol.df, aes(x = log(state1_gdp), y = state1_polity)) +
+  geom_jitter(data = gdp_pol.df, aes(x = log(state1_gdp), y = state1_polity, 
+                                     color = factor(share_ethn, labels = c("No", "Yes")))) +
   facet_grid(~ factor(typology,
     levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
   )) +
   geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
   geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
+  scale_colour_grey(guide = guide_legend(title = "Shared ethnicities")) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
   theme_minimal() +
   theme(
@@ -297,9 +306,10 @@ gdp_pol.fig <- ggplot(data = gdp_pol.df) +
 gdp_pol_fort.df <- gdp_pol.df %>%
   filter(typology %in% c("fortified border", "barrier border"))
 
-# B (2)                         # ---------------------------------------------------------------------------------------------------
-# ADD N_borders and N_countries # ---------------------------------------------------------------------------------------------------
-gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1_gdp), y = state1_polity)) +
+# B (2)                         
+# ADD N_borders and N_countries
+gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1_gdp), y = state1_polity,
+                                                       color = factor(share_ethn, labels = c("No", "Yes")))) +
   geom_jitter() +
   geom_text_repel(label = paste(gdp_pol_fort.df$state1, gdp_pol_fort.df$state2, sep = "-"),
                   segment.color = NA) +
@@ -308,6 +318,7 @@ gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1_gdp), y = 
   )) +
   geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
   geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
+  scale_colour_grey(guide = guide_legend(title = "Shared ethnicities")) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
   theme_minimal() +
@@ -327,7 +338,8 @@ relig.fig <- africa.df %>%
 
 # Global Mobility
 # --------------------------------- #
-
+# Recchi & Deutschmann (2019)
+# / -------------- /
 
 # Dyadic analysis
 ## -------------------------------------------------------------------------- ##
@@ -358,7 +370,7 @@ relig_comb <- expand(border.df, state1_relig, state2_relig) %>%
   pull(combs)
 
 # (2) Make a dyadic dataset
-dyad.df <- africa_dyad.df %>%
+africa_dyad.df <- africa_dyad.df %>%
   mutate(dyad_typ = paste(state1_typology, state2_typology, sep = "_"),
          dyad_relig = paste(state1_relig, state2_relig, sep = "_")) %>%
   
@@ -412,11 +424,11 @@ short.level <- c(
 )
 
 # Change factor levels according to "short.level"
-levels(dyad.df$fdyad_typ) <- short.level
+levels(africa_dyad.df$fdyad_typ) <- short.level
 
 # Shorten further
 # i.e. make undirected
-dyad.df <- dyad.df %>%
+africa_dyad.df <- africa_dyad.df %>%
   mutate(
     fdyad_shtyp =
       fct_collapse(fdyad_typ,
@@ -442,30 +454,30 @@ dyad.df <- dyad.df %>%
   mutate(ind_symmetry = ifelse(fdyad_typ %in% c("FF", "LL", "CC", "BB", "WW"), 1, 0))
 
 # Number of (as)symmetric dyads
-dyad.df %>%
+africa_dyad.df %>%
   count(ind_symmetry) %>%
   mutate(perc = n / sum(n) * 100)
 
 # Compute descriptive statistics
 ## -------------------------------------------------------------------------- ##
-dyad.df <- dyad.df %>%
+africa_dyad.df <- africa_dyad.df %>%
   mutate(
     
     # GDP
     diffGDP = state1_gdp - state2_gdp,
     absdiffGDP = abs(state1_gdp - state2_gdp),
     ratioGDP = state1_gdp / state2_gdp,
-    absratioGDP = ifelse(ratioGDP < 1 & ind_symmetry == 1, 1 / ratioGDP, ratioGDP), # compute greater ratio for symmetric dyads
+    absratioGDP = ifelse(ratioGDP < 1 & ind_symmetry == 1, 1 / ratioGDP, ratioGDP), # use greater ratio for symmetric dyads
     
     # Polity
     diffPol = state1_polity - state2_polity,
     absdiffPol = abs(state1_polity - state2_polity),
     ratioPol =  state1_polity / state2_polity,
-    absratioPol = ifelse(ratioPol < 1 & ind_symmetry == 1, 1 / ratioPol, ratioPol)
+    absratioPol = ifelse(ratioPol < 1 & ind_symmetry == 1, 1 / ratioPol, ratioPol) # use greater ratio for symmetric dyads
   )
 
 # Absolute GDP ratio by border typology
-dyad.vars <- dyad.df %>%
+dyad.vars <- africa_dyad.df %>%
   filter(!is.na(state1_gdp) & !is.na(state2_gdp)) %>%
   group_by(fdyad_typ) %>%
   summarise(
@@ -476,7 +488,7 @@ dyad.vars <- dyad.df %>%
   mutate(asymmetry = ifelse(fdyad_typ %in% c("FF", "LL", "CC", "BB", "WW"), 0, 1)) %>%
   arrange(asymmetry, mGDPdiff)
 
-# Plot
+# Plots
 ## -------------------------------------------------------------------------- ##
 
 # GDPDiff by typology
@@ -588,10 +600,9 @@ border_relig.fig <- border_relig.df %>%
 
 # Typology by ethnicity
 # --------------------------------- #
-border_ethn.df <- dyad.df %>%
-  group_by(fdyad_typ, share_ethn) %>%
-  count(share_ethn) %>%
+border_ethn.df <- africa_dyad.df %>%
   group_by(fdyad_typ) %>%
+  count(share_ethn) %>%
   mutate(perc = n / sum(n) * 100)
 
 border_ethn.fig <- border_ethn.df %>%
@@ -607,6 +618,12 @@ border_ethn.fig <- border_ethn.df %>%
     text = element_text(size = 14),
     axis.ticks.x = element_line(size = .5)
   )
+
+# 
+border_num_ethn.df <- africa_dyad.df %>%
+  group_by(fdyad_typ) %>%
+  summarise(mean = mean(num_share_ethn))
+
 
 # Save figures
 ## -------------------------------------------------------------------------- ##
