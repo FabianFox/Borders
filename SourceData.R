@@ -4,7 +4,7 @@
 ### Download data: 03.04.2018
 
 # Notes & Issues
-# - 
+# - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
@@ -78,6 +78,7 @@ border.df <- contdird %>%
 # Polity IV
 # Variable: Polity2
 # Year: 2017 
+# 2018 available as http://www.systemicpeace.org/inscr/p4v2018.xls
 ## -------------------------------------------------------------------------- ##
 # (1) Load the data retrieved from www.systemicpeace.org/inscrdata.html
 polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2017.sav", 
