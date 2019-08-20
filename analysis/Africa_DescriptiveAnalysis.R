@@ -271,6 +271,7 @@ polity.fig <- ggplot(border_af_bvars) +
 # Figure 2
 # --------------------------------- #
 # A (1) Add grouped mean of GDP and PolityIV
+set.seed(200819)
 gdp_pol.df <- africa.df %>%
   filter(!is.na(state1_gdp) & !is.na(state1_polity)) %>%
   group_by(typology) %>%
@@ -289,7 +290,7 @@ gdp_pol.fig <- ggplot(data = gdp_pol.df) +
   geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
   geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
-  scale_colour_grey(guide = guide_legend(title = "Shared ethnicities")) +
+  scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), guide = guide_legend(title = "Shared ethnicities")) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
   theme_minimal() +
   theme(
@@ -318,7 +319,7 @@ gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1_gdp), y = 
   )) +
   geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
   geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
-  scale_colour_grey(guide = guide_legend(title = "Shared ethnicities")) +
+  scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), guide = guide_legend(title = "Shared ethnicities")) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
   theme_minimal() +
@@ -624,6 +625,26 @@ border_num_ethn.df <- africa_dyad.df %>%
   group_by(fdyad_typ) %>%
   summarise(mean = mean(num_share_ethn))
 
+# Facetted scatterplot: GDP x PolityIV
+# (dyadic variables)
+# --------------------------------- #
+# A (1) Add grouped mean of GDP and PolityIV
+
+# A (2) Facetted scatterplot
+gdp_pol_dyad.fig <- ggplot(data = africa_dyad.df) +
+  geom_jitter(aes(x = ratioGDP, y = diffPol)) +
+  facet_grid(~ factor(state1_typology,
+                      levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
+  )) +
+  labs(x = "GDP p.c. (logged)", y = "PolityIV") +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 
 # Save figures
 ## -------------------------------------------------------------------------- ##
@@ -638,7 +659,7 @@ ggsave(
 # Figure 2
 # Scatterplot (A)
 ggsave(
-  plot = gdp_pol.fig, "./output/figures/Africa_ScatterGDP_Pol.tiff", width = 6, height = 6, unit = "in",
+  plot = gdp_pol.fig, "./output/figures/Africa_ScatterGDP_Pol.tiff", width = 8, height = 8, unit = "in",
   dpi = 300
 )
 
