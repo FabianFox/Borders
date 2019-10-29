@@ -9,7 +9,7 @@
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats, haven)
+p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats, haven, rio)
 
 # Load data:
 # - Direct Contiguity
@@ -366,6 +366,63 @@ border.df <- border.df %>%
   mutate(dyadName = dyadId_fun(state1, state2),
          dyadID = as.numeric(as.factor(dyadName))) %>%
   as_tibble()
+
+# Add a variable that describes the geography of the border region between countries
+# 
+# Variable: see below
+# Year: 2001
+# Available at https://www.prio.org/Publications/Publication/?x=5142
+# (code by AJO)
+## -------------------------------------------------------------------------- ##
+# Geography from Brochmann, Rod & Gleditsch (2012)
+# Data years 1945-2001, reduced to data from 2001
+custom.match <- custom.match[1]
+
+geo.df <- read_dta("./data/Replication_BrochmannRodGleditsch.dta") %>%
+  filter(year == 2001) %>%
+  mutate_at(vars(statea, stateb), 
+            ~countrycode(., origin =  "cown", destination = "iso3c", 
+                         custom_match = custom.match)) %>%
+  as_tibble() %>%
+  select(
+    statea, stateb,
+    lndistan, # distance between capitals (ln)
+    lnrtrade, 
+    rti, lnrti, # rugged terrain
+    border_length_geo = GeoDist, # geodesic distance, i.e. border length
+    PercForest,  PercSwamp, PercRiv, PercLak, PercRivLak, PercMnt,
+    PercCF1, PercCF2, PopCnt, lnpopcnt ## ask authors for details about these vars
+  )
+
+# Some are duplicated in the geography dataset
+geo.df[duplicated(geo.df$statea, geo.df$stateb), c("statea", "stateb")] 
+
+# Dirty solution to create a directed version
+# (1) Duplicate dataset, swap country identifiers and rename them
+swap.df <- geo.df %>%
+  rename(
+    statea = stateb,
+    stateb = statea
+  )
+
+# (2) Bind back together and compute number of shared ethnicities across border
+geo.df <- geo.df %>%
+  bind_rows(., swap.df) %>%
+  mutate(dyadName = paste(statea, stateb, sep = "_")) %>%
+  select(-c(statea, stateb)) %>%
+  select(dyadName, everything()) %>%
+  arrange(dyadName)
+
+# See duplicates here:
+geo.df[duplicated(geo.df$dyadName),"dyadName"]
+
+# Remove duplicated entries
+geo.df <- geo.df %>%
+  distinct(dyadName)
+
+# (3) Match with the source data
+border.df <- border.df %>%
+  left_join(y = geo.df, )
 
 # Keep only the final data
 ## -------------------------------------------------------------------------- ##
