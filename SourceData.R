@@ -376,8 +376,11 @@ border.df <- border.df %>%
 ## -------------------------------------------------------------------------- ##
 # Geography from Brochmann, Rod & Gleditsch (2012)
 # Data years 1945-2001, reduced to data from 2001
+
+# Custom match for Serbia (SRB, 345)
 custom.match <- custom.match[1]
 
+# Read in the data and prepare
 geo.df <- read_dta("./data/Replication_BrochmannRodGleditsch.dta") %>%
   filter(year == 2001) %>%
   mutate_at(vars(statea, stateb), 
@@ -418,11 +421,11 @@ geo.df[duplicated(geo.df$dyadName),"dyadName"]
 
 # Remove duplicated entries
 geo.df <- geo.df %>%
-  distinct(dyadName)
+  distinct(dyadName, .keep_all = TRUE)
 
 # (3) Match with the source data
 border.df <- border.df %>%
-  left_join(y = geo.df, )
+  left_join(y = geo.df, by = "dyadName")
 
 # Keep only the final data
 ## -------------------------------------------------------------------------- ##
