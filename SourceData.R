@@ -33,6 +33,8 @@ contdird <- contdird %>%
   mutate(state1 = countrycode(sourcevar = state1no, origin = "cown", destination = "iso3c", custom_match = custom.match),
          state2 = countrycode(sourcevar = state2no, origin = "cown", destination = "iso3c", custom_match = custom.match)) %>%
   select(state1, state2, conttype, year) %>%
+  add_row(state1 = c("NGA", "TCD"), state2 = c("TCD", "NGA"), # Lake Chad fell dry
+          conttype = c(1, 1), year = c(2016, 2016)) %>%
   arrange(state1, state2)
 
 # Join macro level indicators
@@ -54,7 +56,7 @@ ibad.df <- readRDS("./data/IBAD_Data.rds")
 
 # Join
 contdird <- contdird %>%
-  left_join(ibad.df)
+  left_join(y = ibad.df)
 
 # World Bank
 # World Bank Indicators: "NY.GDP.PCAP.CD", "SP.POP.TOTL"
