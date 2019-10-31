@@ -5,18 +5,20 @@
 
 # Notes & Issues
 # - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
+# - Integrate: START: Global Terrorism Database 
+# - Integrate: CoW Military Interstate Disputes
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats, haven, rio)
+p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats, rio)
 
 # Load data:
 # - Direct Contiguity
 ## -------------------------------------------------------------------------- ##
 # Directed dyads retrieved from http://www.correlatesofwar.org/data-sets/direct-contiguity
-contdird <- read.csv(file = "./data/contdird.csv", 
-                     header = TRUE, stringsAsFactors = FALSE)
+contdird <- import(file = "./data/contdird.csv", 
+                   header = TRUE, stringsAsFactors = FALSE)
 
 # Select only the latest observation (2016), land borders (conttype)
 # and remove unnecessary variables
@@ -47,12 +49,13 @@ contdird <- contdird %>%
 # - CoW: World Religion
 # - CoW: Militarized Interstate Disputes (v4.3) 
 
+
 # Join International Border Agreement Dataset (Owsiak et al. 2018)
 # Note: Data up until 2001
 # Created in: IBAD-DataClean.R
 ## -------------------------------------------------------------------------- ##
 # Load
-ibad.df <- readRDS("./data/IBAD_Data.rds")
+ibad.df <- import("./data/IBAD_Data.rds")
 
 # Join
 contdird <- contdird %>%
@@ -83,7 +86,7 @@ border.df <- contdird %>%
 # 2018 available as http://www.systemicpeace.org/inscr/p4v2018.xls
 ## -------------------------------------------------------------------------- ##
 # (1) Load the data retrieved from www.systemicpeace.org/inscrdata.html
-polityIV <- foreign::read.spss("http://www.systemicpeace.org/inscr/p4v2017.sav", 
+polityIV <- import("http://www.systemicpeace.org/inscr/p4v2017.sav", 
                                to.data.frame = TRUE,
                                use.value.labels = FALSE)  
 
@@ -223,6 +226,15 @@ border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
 # retrieved from http://www.correlatesofwar.org/data-sets/MIDs
 
 # dispute.df <- haven::read_dta("./data/dyadic_mid_31_may_2018.dta")
+
+# START: Global Terrorism Database 
+## -------------------------------------------------------------------------- ##
+# retrieved from https://gtd.terrorismdata.com/files/gtd-1970-2018/
+
+# Aggregate
+
+# gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
+#  filter(iyear %in% c(2017, 2018))
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
