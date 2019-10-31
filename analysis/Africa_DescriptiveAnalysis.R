@@ -10,7 +10,6 @@
 # Issues:
 # - Add religion to descriptive summary
 # - set seed for reproducible jittering
-# - add TCD borders where the Lake Chad has fallen dry
 # - add number of observations to remaining plots
 
 # Load/install packages
