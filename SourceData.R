@@ -28,7 +28,7 @@ contdird <- contdird %>%
 
 # Turn Correlates of War IDs into ISO3 codes
 # (1) Some custom matches, i.e. 347 (Kosovo) = XKX, 345 (Serbia) = SRB 
-custom.match <- c("345" = "SRB", "347" = "XKX", "816" = "VNM")
+custom.match <- c("345" = "SRB", "347" = "XKX")
 
 # (2) Transform
 contdird <- contdird %>%
@@ -222,19 +222,48 @@ border.df[border.df$state1 =="SSD",]$state1_relig <- "chrst"
 border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
 
 # CoW: Militarized Interstate Disputes (v4.3) 
+# Variable: XXXX
+# Year: 2010 (latest)
 ## -------------------------------------------------------------------------- ##
 # retrieved from http://www.correlatesofwar.org/data-sets/MIDs
 
-# dispute.df <- haven::read_dta("./data/dyadic_mid_31_may_2018.dta")
+# dispute.df <- import("./data/dyadic_mid_31_may_2018.dta")
 
 # START: Global Terrorism Database 
+# Variable:
+# Year: 
 ## -------------------------------------------------------------------------- ##
 # retrieved from https://gtd.terrorismdata.com/files/gtd-1970-2018/
 
-# Aggregate
+gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
+  filter(between(iyear, 2015, 2018)) %>%
+  select(eventid, iyear, imonth, iday, approxdate,   # date of incident
+         country, country_txt, longitude, latitude,  # location of incident
+         starts_with("natlty"),                      # nationality of victims
+         nkill, nwound,                              # no. killed and injured
+         starts_with("INT", ignore.case = FALSE))    # INT_LOG - group crossed border
 
-# gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
-#  filter(iyear %in% c(2017, 2018))
+# Save/load prepared dataset
+# export(gtd.df, "./data/gtd_prepared.rds")
+gtd.df <- import("./data/gtd_prepared.rds")
+
+# Aggregate by number of victim deaths on country's territory
+# Custom match for countrycode
+gtd.custom.match <- c("Kosovo" = "XKX")
+
+# Aggregate and complete missing NA's
+gtd.agg.df <- gtd.df %>%
+  group_by(country_txt, iyear) %>%
+  summarise(nkill_agg = sum(nkill), nwound_agg = sum(nwound)) %>%
+  ungroup() %>%
+  mutate(cntry_iso3 = countrycode(country_txt, "country.name.en", "iso3c", 
+                                  custom_match = gtd.custom.match)) %>%
+  complete(nesting(country_txt, cntry_iso3), iyear) %>%                    # Consult the codebook to check
+  group_by(cntry_iso3) %>%                                                 # whether missing years are zeros or NAs
+  summarise(death_toll_3yrs = sum(nkill_agg))
+
+# Join to source.df
+#
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
