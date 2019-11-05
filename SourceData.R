@@ -5,7 +5,6 @@
 
 # Notes & Issues
 # - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
-# - Integrate: START: Global Terrorism Database 
 # - Integrate: CoW Military Interstate Disputes
 
 # Load/install packages
@@ -62,14 +61,19 @@ contdird <- contdird %>%
   left_join(y = ibad.df)
 
 # World Bank
-# World Bank Indicators: "NY.GDP.PCAP.CD", "SP.POP.TOTL"
-# Year: 2018 (accessed: 2018/08/08)
+# World Bank Indicators: 
+# GDP p.c. in current US$ - "NY.GDP.PCAP.CD"
+# Total Population - "SP.POP.TOTL"
+# Armed forces personnel, total - MS.MIL.TOTL.P1
+# Military expenditure, current LCU - MS.MIL.XPND.CN
+# Year: 2017 (accessed: 2019/11/05)
 ## -------------------------------------------------------------------------- ##
 # (1)
-# Download data (mrv = newest available)
+# Download data (mrv = newest available; here: 2017)
 wb.info <- wb(country = unique(contdird$state1),
-              indicator = c("NY.GDP.PCAP.CD", "SP.POP.TOTL"), 
-              mrv = 1, return_wide = TRUE)
+              indicator = c("NY.GDP.PCAP.CD", "SP.POP.TOTL", "MS.MIL.TOTL.P1", 
+                            "MS.MIL.XPND.CN"), 
+              startdate = 2017, enddate = 2017, return_wide = TRUE)
 
 # (2) Match to base data
 border.df <- contdird %>%
@@ -77,8 +81,16 @@ border.df <- contdird %>%
     state1_pop = wb.info[match(contdird$state1, wb.info$iso3c),]$SP.POP.TOTL,
     state2_pop = wb.info[match(contdird$state2, wb.info$iso3c),]$SP.POP.TOTL,
     state1_gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$NY.GDP.PCAP.CD,
-    state2_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD
-  )
+    state2_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD,
+    state1_military_pers = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.TOTL.P1,
+    state2_military_pers = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.TOTL.P1,
+    state1_military_expenditure = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CN,
+    state2_military_expenditure = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CN,
+    state1_military_pers_pc = (state1_military_pers / state1_pop) * 1000,
+    state2_military_pers_pc = (state2_military_pers / state2_pop) * 1000,
+    state1_military_expenditure_log_pc = log((state1_military_expenditure / state1_pop) * 1000000),
+    state2_military_expenditure_log_pc = log((state2_military_expenditure / state2_pop) * 1000000)
+  ) 
 
 # Polity IV
 # Variable: Polity2
@@ -235,13 +247,13 @@ border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
 ## -------------------------------------------------------------------------- ##
 # retrieved from https://gtd.terrorismdata.com/files/gtd-1970-2018/
 
-gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
-  filter(between(iyear, 2015, 2018)) %>%
-  select(eventid, iyear, imonth, iday, approxdate,   # date of incident
-         country, country_txt, longitude, latitude,  # location of incident
-         starts_with("natlty"),                      # nationality of victims
-         nkill, nwound,                              # no. killed and injured
-         starts_with("INT", ignore.case = FALSE))    # INT_LOG - group crossed border
+# gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
+#   filter(between(iyear, 2015, 2018)) %>%
+#   select(eventid, iyear, imonth, iday, approxdate,   # date of incident
+#          country, country_txt, longitude, latitude,  # location of incident
+#          starts_with("natlty"),                      # nationality of victims
+#          nkill, nwound,                              # no. killed and injured
+#          starts_with("INT", ignore.case = FALSE))    # INT_LOG - group crossed border
 
 # Save/load prepared dataset
 # export(gtd.df, "./data/gtd_prepared.rds")
@@ -254,16 +266,26 @@ gtd.custom.match <- c("Kosovo" = "XKX")
 # Aggregate and complete missing NA's
 gtd.agg.df <- gtd.df %>%
   group_by(country_txt, iyear) %>%
-  summarise(nkill_agg = sum(nkill), nwound_agg = sum(nwound)) %>%
+  summarise(nterror = n(), 
+            nkill_agg = sum(nkill, na.rm = TRUE),
+            nwound_agg = sum(nwound, na.rm = TRUE)) %>%
   ungroup() %>%
   mutate(cntry_iso3 = countrycode(country_txt, "country.name.en", "iso3c", 
                                   custom_match = gtd.custom.match)) %>%
-  complete(nesting(country_txt, cntry_iso3), iyear) %>%                    # Consult the codebook to check
-  group_by(cntry_iso3) %>%                                                 # whether missing years are zeros or NAs
-  summarise(death_toll_3yrs = sum(nkill_agg))
+  complete(nesting(country_txt, cntry_iso3), iyear,
+           fill = list(nterror = 0, nkill_agg = 0, nwound_agg = 0)) %>%            
+  group_by(cntry_iso3) %>%  
+  summarise(nterror_3yrs = sum(nterror),
+            death_toll_3yrs = sum(nkill_agg),
+            nwound_3yrs = sum(nwound_agg))
 
-# Join to source.df
-#
+# Join to border.df
+# Join main religious group to border.df
+border.df <- border.df %>%
+  mutate(state1_nterror_3yrs = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$nterror_3yrs,
+         state2_nterror_3yrs = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$nterror_3yrs,
+         state1_death_toll_3yrs = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$death_toll_3yrs,
+         state2_death_toll_3yrs = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$death_toll_3yrs)
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
