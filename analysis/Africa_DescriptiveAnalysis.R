@@ -128,7 +128,7 @@ fac_ind <- function(x) {
 # Descriptive analysis
 ## -------------------------------------------------------------------------- ##
 # Basic description
-# Number of African states (p. 10)
+# Number of African states (p. 9)
 africa.dim <- tibble(
   countries = with(africa.df, unique(c(state1, state2))),
   continent = countrycode(countries, "iso3c", "continent")
@@ -136,6 +136,9 @@ africa.dim <- tibble(
   group_by(continent) %>%
   mutate(n_states = length(continent)) %>%
   distinct(continent, n_states, .keep_all = TRUE)
+
+# Number of countries
+n_countries <- sum(africa.dim$n_states)
 
 # Number of bidrectional dyads
 n_borders <- dim(africa.df)[1]
