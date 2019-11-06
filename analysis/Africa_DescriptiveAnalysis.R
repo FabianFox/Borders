@@ -193,7 +193,7 @@ africa_descriptive <- africa.df %>%
                           ~sd(., na.rm = T), 
                           ~min(., na.rm = T), 
                           ~max(., na.rm = T), 
-                          missing = ~sum(is.na(.)))
+                          obs = ~sum(!is.na(.)))
                ) %>%
   mutate_all(~round(., digits = 3))
 
@@ -206,6 +206,7 @@ africa_descriptive <- africa_descriptive %>%
   spread(measure, value)
 
 # Graphical display of descriptive statistics
+
 # / -------------- /
 
 # By regions
@@ -216,37 +217,98 @@ africa_descriptive <- africa_descriptive %>%
 # Bivariate
 # --------------------------------- #
 
+# Note:
 # States have multiple borders. Each border influences the descriptive statistics. 
 # Hence, states with a greater number of borders exert a heavier influence on the
 # statistics such as the median and mean. 
 
-# GDP, Polity IV & Religion by 
-# typology
+# GDP, Polity IV, military capacity
+# & main religion by typology
 # --------------------------------- #
 # Summary stats
 border_af_bvars <- africa.df %>%
   group_by(typology) %>%
-  summarise_at(vars[1:2],
+  summarise_at(vars[c(1:2, 3:6)],
                list(~mean(., na.rm = T), 
                     ~sd(., na.rm = T), 
                     ~min(., na.rm = T), 
                     ~max(., na.rm = T), 
-                    ~sum(!is.na(.)))
+                    obs = ~sum(!is.na(.)))
   )
 
-# GDP
-# World Bank Indicators: "NY.GDP.PCAP.CD", "SP.POP.TOTL"
-# Year: 2018 (accessed: 2018/08/08)
+# Prepare
+border_af_bvars <- border_af_bvars %>% 
+  gather(var, value, -typology) %>%
+  mutate(measure = str_extract(var, "[:alpha:]+$"),
+         variable = str_extract(var, paste0(".+(?=", measure, ")"))) %>%
+  select(-var) %>%
+  spread(measure, value)
+
+# World Bank Indicators
+# GDP p.c. in current US$ - "NY.GDP.PCAP.CD"
+# Armed forces personnel, total - MS.MIL.TOTL.P1
+# Military expenditure, current LCU - MS.MIL.XPND.CN
+# Year: 2017 (accessed: 2019/11/05)
 # --------------------------------- #
-gdp.fig <- ggplot(border_af_bvars) +
-  geom_bar(aes(x = fac_ind(typology), y = state1_gdp_mean), stat = "identity") +
+
+# GDP per capita
+gdp.fig <- border_af_bvars %>%
+  filter(variable == "state1_gdp_") %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
   labs(
     title = "Mean GDP per capita, Africa",
     caption = paste0(
-      "N(borders) = ", sum(border_af_bvars$state1_gdp_sum),
+      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_gdp_",]$obs),
       "\nN(countries) = ",
       length(unique(africa.df[!is.na(africa.df$state1_gdp),]$state1)),
-      "\nData: WorldBank (2018)"
+      "\nData: WorldBank (2017)"
+    ),
+    x = "", y = ""
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5)
+  )
+
+# Military personnel per 1000 individuals
+army_size.fig <- border_af_bvars %>%
+  filter(variable == "state1_military_pers_pc_") %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
+  labs(
+    title = "Mean military personnel per 1000 in population, Africa",
+    caption = paste0(
+      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_military_pers_pc_",]$obs),
+      "\nN(countries) = ",
+      length(unique(africa.df[!is.na(africa.df$state1_military_pers_pc),]$state1)),
+      "\nData: WorldBank (2017)"
+    ),
+    x = "", y = ""
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5)
+  )
+
+# Log Military expenditures per 1.000.000 inhabitants
+military_expenditures.fig <- border_af_bvars %>%
+  filter(variable == "state1_military_expenditure_log_pc_") %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
+  labs(
+    title = "Mean military expenditures per million in population (logged), Africa",
+    caption = paste0(
+      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_military_expenditure_log_pc_",]$obs),
+      "\nN(countries) = ",
+      length(unique(africa.df[!is.na(africa.df$state1_military_expenditure_log_pc),]$state1)),
+      "\nData: WorldBank (2017)"
     ),
     x = "", y = ""
   ) +
@@ -262,12 +324,14 @@ gdp.fig <- ggplot(border_af_bvars) +
 # Variable: Polity2
 # Year: 2017 
 # --------------------------------- #
-polity.fig <- ggplot(border_af_bvars) +
-  geom_bar(aes(x = fac_ind(typology), y = state1_polity_mean), stat = "identity") +
+polity.fig <- border_af_bvars %>%
+  filter(variable == "state1_polity_") %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
   labs(
     title = "Mean political system, Africa",
     caption = paste0(
-      "N(borders) = ", sum(border_af_bvars$state1_polity_sum),
+      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_polity_",]$obs),
       "\nN(countries) = ",
       length(unique(africa.df[!is.na(africa.df$state1_polity),]$state1)),
       "\nData: PolityIV (2017)"
@@ -282,7 +346,36 @@ polity.fig <- ggplot(border_af_bvars) +
     axis.ticks.x = element_line(size = .5)
   )
 
+# Global Terrorism Database
+# Variable: Incidents of terror
+# Year: 2015-2018 
+# --------------------------------- #
+
+terror.fig <- border_af_bvars %>%
+  filter(variable == "state1_nterror_3yrs_") %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
+  labs(
+    title = "Incident of terror (2015-2018), Africa",
+    caption = paste0(
+      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_nterror_3yrs",]$obs),
+      "\nN(countries) = ",
+      length(unique(africa.df[!is.na(africa.df$state1_nterror_3yrs),]$state1)),
+      "\nData: PolityIV (2017)"
+    ),
+    x = "", y = ""
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5)
+  )
+
 # Facetted scatterplot: GDP x PolityIV
+## -------------------------------------------------------------------------- ##
+
 # Figure 2
 # --------------------------------- #
 # A (1) Add grouped mean of GDP and PolityIV
