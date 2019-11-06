@@ -184,16 +184,29 @@ ind.perc.fig <- africa.df %>%
 # Descriptive summary of independent
 # variables
 # --------------------------------- #
-vars <- c("state1_gdp", "state1_polity", "share_ethn")
+vars <- c("state1_gdp", "state1_polity", "share_ethn", 
+          "state1_military_expenditure_log_pc",
+          "state1_military_pers_pc", "state1_nterror_3yrs")
 
 africa_descriptive <- africa.df %>%
   summarise_at(vars, list(~mean(., na.rm = T), 
                           ~sd(., na.rm = T), 
                           ~min(., na.rm = T), 
                           ~max(., na.rm = T), 
-                          ~sum(!is.na(.)))
+                          missing = ~sum(is.na(.)))
                ) %>%
   mutate_all(~round(., digits = 3))
+
+# Prepare
+africa_descriptive <- africa_descriptive %>% 
+  gather(var, value) %>%
+  mutate(measure = str_extract(var, "[:alpha:]+$"),
+         variable = str_extract(var, paste0(".+(?=", measure, ")"))) %>%
+  select(-var) %>%
+  spread(measure, value)
+
+# Graphical display of descriptive statistics
+# / -------------- /
 
 # By regions
 # --------------------------------- #
