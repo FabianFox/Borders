@@ -42,7 +42,8 @@ contdird <- contdird %>%
 ## -------------------------------------------------------------------------- ##
 # Data:
 # - IBAD (Border Agreement Data)
-# - World Bank (GDP and Population -> GDP per capita)
+# - World Bank (GDP p.c. in current US$ | Total Population |
+#               Armed forces personnel, total | Military expenditure, current LCU)
 # - Polity IV 
 # - Visa Network Data
 # - CoW: World Religion
@@ -446,7 +447,7 @@ border.df <- border.df %>%
 custom.match <- custom.match[1]
 
 # Read in the data and prepare
-geo.df <- read_dta("./data/Replication_BrochmannRodGleditsch.dta") %>%
+geo.df <- import("./data/Replication_BrochmannRodGleditsch.dta") %>%
   filter(year == 2001) %>%
   mutate_at(vars(statea, stateb), 
             ~countrycode(., origin =  "cown", destination = "iso3c", 
