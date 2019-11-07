@@ -5,7 +5,6 @@
 #   - Cases with insufficient information:
 #   - africa.df %>%
 #        filter(information_density == "low")
-# - Data for administrative and police capacities
 
 # Issues:
 # - Add religion to descriptive summary
@@ -118,12 +117,35 @@ africa.df <- africa.df %>%
   mutate(share_ethn = ifelse(is.na(num_share_ethn), 0, 1),
          num_share_ethn = ifelse(is.na(num_share_ethn), 0, num_share_ethn))
 
-# Function creates a factor variable of the indicator
+# Setup for the analysis and plots:
+# (1) Functions that create a factor variable of the indicator
+# (2) Theme for the plots
 ## -------------------------------------------------------------------------- ##
-fac_ind <- function(x) {
+
+# (1) Factor variable
+# English
+fac_ind_en <- function(x) {
   factor(x, levels = c("landmark border", "frontier border", "checkpoint border", 
                        "barrier border", "fortified border"))
 }
+
+# German
+fac_ind_de <- function(x) {
+  factor(x, levels = c("landmark border", "frontier border", "checkpoint border", 
+                       "barrier border", "fortified border"),
+         labels = c("Grenzstein", "Niemandslandgrenze", "Kontrollpunktgrenze", 
+                       "Barrieregrenze", "fortifizierte Grenze"))
+}
+
+# (2) Theme for the plots
+theme.basic <- theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 
 # Descriptive analysis
 ## -------------------------------------------------------------------------- ##
@@ -148,38 +170,28 @@ n_borders <- dim(africa.df)[1]
 # --------------------------------- #
 # Distribution of border types
 # Absolute
-ind.dist.fig <- ggplot(africa.df, aes(x = fac_ind(typology))) +
+ind.dist.fig <- ggplot(africa.df, aes(x = fac_ind_de(typology))) +
   geom_bar() +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # Distribution
 # Relative (Figure 1)
 ind.perc.fig <- africa.df %>%
   group_by(typology) %>%
-  summarise(perc = length(typology) / length(africa.df$typology) * 100) %>%
-  ggplot(aes(x = fac_ind(typology), y = perc)) +
+  summarise(percentage = length(typology) / length(africa.df$typology) * 100,
+            count = n()) %>%
+  ggplot(aes(x = fac_ind_de(typology), y = percentage)) +
   geom_bar(stat = "identity") +
+  geom_text(stat = "identity", aes(label = paste0("N = ", count)), vjust = -1) +
   labs(
     caption = paste0(
-      "N(borders) = ", length(africa.df$typology),
-      "\nN(countries) = ", length(unique(africa.df$state1))
+      "N(Grenzen) = ", length(africa.df$typology),
+      "\nN(Staaten) = ", length(unique(africa.df$state1))
     ),
     x = "", y = ""
   ) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # Descriptive summary of independent
 # variables
@@ -198,12 +210,25 @@ africa_descriptive <- africa.df %>%
   mutate_all(~round(., digits = 3))
 
 # Prepare
+# Wide
 africa_descriptive <- africa_descriptive %>% 
   gather(var, value) %>%
   mutate(measure = str_extract(var, "[:alpha:]+$"),
          variable = str_extract(var, paste0(".+(?=", measure, ")"))) %>%
   select(-var) %>%
-  spread(measure, value)
+  spread(measure, value) %>%
+  mutate(ymin = mean - sd,
+         ymax = mean + sd)
+
+# List-column (needs some work...)
+africa_descriptive.nest <- africa_descriptive %>%
+  group_by(variable) %>%
+  nest() %>%
+  mutate(plot = map2(data, variable, ~ggplot(data = .x) +
+                       geom_errorbar(aes(x = 1, ymin = ymin, ymax = ymax), stat = "identity") +
+                       geom_point(aes(x = 1, y = mean) +
+                       theme.basic
+                       )))
 
 # Graphical display of descriptive statistics
 
@@ -244,134 +269,45 @@ border_af_bvars <- border_af_bvars %>%
   select(-var) %>%
   spread(measure, value)
 
-# World Bank Indicators
-# GDP p.c. in current US$ - "NY.GDP.PCAP.CD"
-# Armed forces personnel, total - MS.MIL.TOTL.P1
-# Military expenditure, current LCU - MS.MIL.XPND.CN
-# Year: 2017 (accessed: 2019/11/05)
-# --------------------------------- #
+# List-column
+border_af_bvars.nest <- border_af_bvars %>%
+  group_by(variable) %>%
+  nest() %>%
+  ungroup() %>%
+  mutate(title = c(
+    "Mean share of partitioned ethnicities",
+    "Mean GDP per capita, Africa",
+    "Mean military expenditures per million in population (logged), Africa",
+    "Mean military personnel per 1000 in population, Africa",
+    "Incidents of terror (2015-2018), Africa",
+    "Mean political system, Africa"
+  ),
+  subtitle = c(
+    "\nData: Michalopoulos, S., & Papaioannou, E. (2016)",
+    "\nData: WorldBank (2017)",
+    "\nData: WorldBank (2017)",
+    "\nData: WorldBank (2017)",
+    "\nData: Global Terrorism Database",
+    "\nData: PolityIV (2017)"
+  ))
 
-# GDP per capita
-gdp.fig <- border_af_bvars %>%
-  filter(variable == "state1_gdp_") %>%
-  ggplot() +
-  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
-  labs(
-    title = "Mean GDP per capita, Africa",
-    caption = paste0(
-      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_gdp_",]$obs),
-      "\nN(countries) = ",
-      length(unique(africa.df[!is.na(africa.df$state1_gdp),]$state1)),
-      "\nData: WorldBank (2017)"
-    ),
-    x = "", y = ""
-  ) +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+# Plot
+border_af_bvars.nest.fig <- border_af_bvars.nest %>%
+  mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
+                           geom_bar(aes(x = fac_ind_de(typology), y = mean), stat = "identity") +
+                           labs(
+                             title = ..2,
+                             caption = paste0(
+                               "N(borders) = ", sum(.x$obs),
+                               "\nN(countries) = ",
+                               length(unique(africa.df[!is.na(africa.df$state1_gdp),]$state1)),
+                               ..3
+                             ),
+                             x = "", y = ""
+                           ) + 
+                           theme.basic
+  ))
 
-# Military personnel per 1000 individuals
-army_size.fig <- border_af_bvars %>%
-  filter(variable == "state1_military_pers_pc_") %>%
-  ggplot() +
-  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
-  labs(
-    title = "Mean military personnel per 1000 in population, Africa",
-    caption = paste0(
-      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_military_pers_pc_",]$obs),
-      "\nN(countries) = ",
-      length(unique(africa.df[!is.na(africa.df$state1_military_pers_pc),]$state1)),
-      "\nData: WorldBank (2017)"
-    ),
-    x = "", y = ""
-  ) +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
-
-# Log Military expenditures per 1.000.000 inhabitants
-military_expenditures.fig <- border_af_bvars %>%
-  filter(variable == "state1_military_expenditure_log_pc_") %>%
-  ggplot() +
-  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
-  labs(
-    title = "Mean military expenditures per million in population (logged), Africa",
-    caption = paste0(
-      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_military_expenditure_log_pc_",]$obs),
-      "\nN(countries) = ",
-      length(unique(africa.df[!is.na(africa.df$state1_military_expenditure_log_pc),]$state1)),
-      "\nData: WorldBank (2017)"
-    ),
-    x = "", y = ""
-  ) +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
-
-# PolityIV
-# Variable: Polity2
-# Year: 2017 
-# --------------------------------- #
-polity.fig <- border_af_bvars %>%
-  filter(variable == "state1_polity_") %>%
-  ggplot() +
-  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
-  labs(
-    title = "Mean political system, Africa",
-    caption = paste0(
-      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_polity_",]$obs),
-      "\nN(countries) = ",
-      length(unique(africa.df[!is.na(africa.df$state1_polity),]$state1)),
-      "\nData: PolityIV (2017)"
-    ),
-    x = "", y = ""
-  ) +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
-
-# Global Terrorism Database
-# Variable: Incidents of terror
-# Year: 2015-2018 
-# --------------------------------- #
-
-terror.fig <- border_af_bvars %>%
-  filter(variable == "state1_nterror_3yrs_") %>%
-  ggplot() +
-  geom_bar(aes(x = fac_ind(typology), y = mean), stat = "identity") +
-  labs(
-    title = "Incident of terror (2015-2018), Africa",
-    caption = paste0(
-      "N(borders) = ", sum(border_af_bvars[border_af_bvars$variable == "state1_nterror_3yrs",]$obs),
-      "\nN(countries) = ",
-      length(unique(africa.df[!is.na(africa.df$state1_nterror_3yrs),]$state1)),
-      "\nData: PolityIV (2017)"
-    ),
-    x = "", y = ""
-  ) +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
 
 # Facetted scatterplot: GDP x PolityIV
 ## -------------------------------------------------------------------------- ##
@@ -760,7 +696,7 @@ gdp_pol_dyad.fig <- ggplot(data = africa_dyad.df) +
 # Figure 1
 # Relative distribution of border infrastructure
 ggsave(
-  plot = ind.perc.fig, "./output/figures/Africa_RelativeDistribution.tiff", width = 6, height = 6, unit = "in",
+  plot = ind.perc.fig, "./output/figures/Africa_RelativeDistribution.tiff", width = 8, height = 6, unit = "in",
   dpi = 300
 )
 
