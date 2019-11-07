@@ -265,7 +265,8 @@ border_af_bvars <- africa.df %>%
 border_af_bvars <- border_af_bvars %>% 
   gather(var, value, -typology) %>%
   mutate(measure = str_extract(var, "[:alpha:]+$"),
-         variable = str_extract(var, paste0(".+(?=", measure, ")"))) %>%
+         variable = str_extract(var, paste0(".+(?=", measure, ")")) %>%
+           str_sub(., end = -2)) %>%
   select(-var) %>%
   spread(measure, value)
 
@@ -293,14 +294,14 @@ border_af_bvars.nest <- border_af_bvars %>%
 
 # Plot
 border_af_bvars.nest.fig <- border_af_bvars.nest %>%
-  mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
+  mutate(plots = pmap(list(data, title, subtitle, variable), ~ggplot(data = ..1) +
                            geom_bar(aes(x = fac_ind_de(typology), y = mean), stat = "identity") +
                            labs(
                              title = ..2,
                              caption = paste0(
                                "N(borders) = ", sum(.x$obs),
                                "\nN(countries) = ",
-                               length(unique(africa.df[!is.na(africa.df$state1_gdp),]$state1)),
+                               length(unique(africa.df[!is.na(paste0("africa.df$",..4)),]$state1)),
                                ..3
                              ),
                              x = "", y = ""
@@ -308,6 +309,8 @@ border_af_bvars.nest.fig <- border_af_bvars.nest %>%
                            theme.basic
   ))
 
+# Combine plots
+combined_bvars <- plot_grid(plotlist = border_af_bvars.nest.fig$plots[c(-1,-3)])
 
 # Facetted scatterplot: GDP x PolityIV
 ## -------------------------------------------------------------------------- ##
@@ -336,14 +339,7 @@ gdp_pol.fig <- ggplot(data = gdp_pol.df) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
   scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), guide = guide_legend(title = "Shared ethnicities")) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+  theme.basic
 
 # B (1) Zoomed in scatterplot for barrier & fortified borders
 # Figure 3
@@ -366,14 +362,7 @@ gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1_gdp), y = 
   scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), guide = guide_legend(title = "Shared ethnicities")) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+  theme.basic
 
 # World Religion (CoW)
 # --------------------------------- #
@@ -697,6 +686,12 @@ gdp_pol_dyad.fig <- ggplot(data = africa_dyad.df) +
 # Relative distribution of border infrastructure
 ggsave(
   plot = ind.perc.fig, "./output/figures/Africa_RelativeDistribution.tiff", width = 8, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Plots of descriptive statistics 
+ggsave(
+  plot = combined_bvars, "./output/figures/DescriptivePlots.tiff", width = 12.5, height = 8, unit = "in",
   dpi = 300
 )
 
