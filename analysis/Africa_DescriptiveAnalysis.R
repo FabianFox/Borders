@@ -227,12 +227,46 @@ africa_descriptive.nest <- africa_descriptive %>%
   mutate(plot = map2(data, variable, ~ggplot(data = .x) +
                        geom_errorbar(aes(x = 1, ymin = ymin, ymax = ymax), stat = "identity") +
                        geom_point(aes(x = 1, y = mean) +
-                       theme.basic
+                                    theme.basic
                        )))
 
-# Graphical display of descriptive statistics
+# Continuous variables
+# Divide certain variables to get them on a common scale
+# (1) GDP per capita 
+africa_descriptive[africa_descriptive$variable == "state1_gdp_", 
+                   c("max", "mean", "min", "sd", "ymin", "ymax")] <- 
+  africa_descriptive[africa_descriptive$variable == "state1_gdp_", 
+                     c("max", "mean", "min", "sd", "ymin", "ymax")] %>% 
+  mutate_all(funs(./1000))
 
-# / -------------- /
+# (2) Nterror
+africa_descriptive[africa_descriptive$variable == "state1_nterror_3yrs_", 
+                   c("max", "mean", "min", "sd", "ymin", "ymax")] <- 
+  africa_descriptive[africa_descriptive$variable == "state1_nterror_3yrs_", 
+                     c("max", "mean", "min", "sd", "ymin", "ymax")] %>% 
+  mutate_all(funs(./100))
+
+# Graphical display of descriptive statistics
+africa_descriptive.fig <- africa_descriptive %>%
+  filter(!variable %in% c("state1_military_expenditure_log_pc_", "share_ethn_")) %>%
+  ggplot() +
+  geom_point(aes(x = mean, y = variable)) +
+  geom_errorbarh(aes(y = variable, xmin = ymin, xmax = ymax), height = .2) +
+  scale_x_continuous(breaks = seq(-10, 10, 2), limits = c(-10, 10)) +
+  scale_y_discrete(breaks = c("state1_gdp_", "state1_military_pers_pc_", "state1_nterror_3yrs_",
+                            "state1_polity_"),
+                   labels = c("GDP p.c.\n(in 1.000 US$)", 
+                              "Military personnel\n(per 1.000 population)", 
+                              "Terror incidents\n(in hundreds)", 
+                              "PolityIV")) +
+  labs(x = "", y = "") +
+  theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5)
+  )
 
 # By regions
 # --------------------------------- #
@@ -689,7 +723,13 @@ ggsave(
   dpi = 300
 )
 
-# Plots of descriptive statistics 
+# Descriptive statistics
+ggsave(
+  plot = africa_descriptive.fig, "./output/figures/Africa_DescriptiveStats.tiff", width = 6, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Plots of indicator by independent variables
 ggsave(
   plot = combined_bvars, "./output/figures/DescriptivePlots.tiff", width = 12.5, height = 8, unit = "in",
   dpi = 300
