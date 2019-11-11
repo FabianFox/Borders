@@ -252,9 +252,11 @@ africa_descriptive.fig <- africa_descriptive %>%
   ggplot() +
   geom_point(aes(x = mean, y = variable)) +
   geom_errorbarh(aes(y = variable, xmin = ymin, xmax = ymax), height = .2) +
+  geom_text(stat = "identity", aes(x = mean, y = variable, 
+                                   label = paste0("N = ", obs)), vjust = 2) + 
   scale_x_continuous(breaks = seq(-10, 10, 2), limits = c(-10, 10)) +
-  scale_y_discrete(breaks = c("state1_gdp_", "state1_military_pers_pc_", "state1_nterror_3yrs_",
-                            "state1_polity_"),
+  scale_y_discrete(breaks = c("state1_gdp_", "state1_military_pers_pc_", 
+                              "state1_nterror_3yrs_", "state1_polity_"),
                    labels = c("GDP p.c.\n(in 1.000 US$)", 
                               "Military personnel\n(per 1.000 population)", 
                               "Terror incidents\n(in hundreds)", 
@@ -383,26 +385,45 @@ gdp_pol_fort.df <- gdp_pol.df %>%
 
 # B (2)                         
 # ADD N_borders and N_countries
-gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, aes(x = log(state1_gdp), y = state1_polity,
-                                                       color = factor(share_ethn, labels = c("No", "Yes")))) +
+gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, 
+                           aes(x = log(state1_gdp), y = state1_polity,
+                               color = factor(share_ethn, labels = c("No", "Yes")))) +
   geom_jitter() +
   geom_text_repel(label = paste(gdp_pol_fort.df$state1, gdp_pol_fort.df$state2, sep = "-"),
-                  segment.color = NA) +
+                  segment.color = NA, key_glyph = "point") +
   facet_grid(~ factor(typology,
-                      levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
-  )) +
-  geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
-  geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
-  scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), guide = guide_legend(title = "Shared ethnicities")) +
+                      levels = c("landmark border", "frontier border", 
+                                 "checkpoint border", "barrier border", 
+                                 "fortified border"))) +
+  geom_hline(aes(yintercept = median_polity, group = typology), colour = "black",
+             alpha = .3, size = 1.5) +
+  geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black",
+             alpha = .3, size = 1.5) +
+  scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), 
+                      guide = guide_legend(title = "Shared ethnicities")) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
   theme.basic
 
 # World Religion (CoW)
 # --------------------------------- #
-relig.fig <- africa.df %>%
+relig.df <- africa.df %>%
   group_by(state1_relig, typology) %>%
-  summarise(n = n())
+  summarise(n = n()) %>%
+  group_by(typology) %>%
+  mutate(percentage = n / sum(n))
+
+relig.fig <- relig.df %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind_de(typology), y = percentage, 
+               fill = factor(state1_relig, 
+                             levels = c("chrst", "islm", "jud"),
+                             labels = c("christlich", "muslimisch", "jüdisch"))), 
+               stat = "identity") +
+  scale_fill_grey() +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%")) +
+  labs(x = "", y = "", fill = "Mehrheitsreligion") +
+  theme.basic
 
 # Global Mobility
 # --------------------------------- #
@@ -716,6 +737,9 @@ gdp_pol_dyad.fig <- ggplot(data = africa_dyad.df) +
 # Save figures
 ## -------------------------------------------------------------------------- ##
 
+# Monadic analysis
+# --------------------------------- #
+
 # Figure 1
 # Relative distribution of border infrastructure
 ggsave(
@@ -745,9 +769,18 @@ ggsave(
 # Figure 3
 # Scatterplot (B)
 ggsave(
-  plot = gdp_pol_fort.fig, "./output/figures/Africa_ScatterGDP_Pol_Fort.tiff", width = 6, height = 6, unit = "in",
+  plot = gdp_pol_fort.fig, "./output/figures/Africa_ScatterGDP_Pol_Fort.tiff", width = 8, height = 8, unit = "in",
   dpi = 300
 )
+
+# Religion by typology
+ggsave(
+  plot = relig.fig, "./output/figures/Africa_religion_typology.tiff", width = 6, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Dyadic analysis
+# --------------------------------- #
 
 # Polity
 ggsave(
