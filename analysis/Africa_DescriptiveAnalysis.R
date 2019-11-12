@@ -257,10 +257,10 @@ africa_descriptive.fig <- africa_descriptive %>%
   scale_x_continuous(breaks = seq(-10, 10, 2), limits = c(-10, 10)) +
   scale_y_discrete(breaks = c("state1_gdp_", "state1_military_pers_pc_", 
                               "state1_nterror_3yrs_", "state1_polity_"),
-                   labels = c("GDP p.c.\n(in 1.000 US$)", 
-                              "Military personnel\n(per 1.000 population)", 
-                              "Terror incidents\n(in hundreds)", 
-                              "PolityIV")) +
+                   labels = c("BIP pro Kopf\n(in 1.000 USD)", 
+                              "Militärpersonal\n(pro 1.000 Einw.)", 
+                              "Terroristische Vorfälle\n(in Hunderten)", 
+                              "Politisches System (PolityIV)")) +
   labs(x = "", y = "") +
   theme_minimal() +
   theme(
@@ -312,20 +312,20 @@ border_af_bvars.nest <- border_af_bvars %>%
   nest() %>%
   ungroup() %>%
   mutate(title = c(
-    "Mean share of partitioned ethnicities",
-    "Mean GDP per capita, Africa",
-    "Mean military expenditures per million in population (logged), Africa",
-    "Mean military personnel per 1000 in population, Africa",
-    "Incidents of terror (2015-2018), Africa",
-    "Mean political system, Africa"
+    "Grenzüberschreitende Ethnien",
+    "BIP pro Kopf in USD",
+    "Militärausgaben pro Millionen Einwohner (log.)",
+    "Militärpersonal pro 1.000 Einwohner",
+    "Terroraktivitäten (2015-2018)",
+    "Politisches System (PolityIV)"
   ),
   subtitle = c(
-    "\nData: Michalopoulos, S., & Papaioannou, E. (2016)",
-    "\nData: WorldBank (2017)",
-    "\nData: WorldBank (2017)",
-    "\nData: WorldBank (2017)",
-    "\nData: Global Terrorism Database",
-    "\nData: PolityIV (2017)"
+    "\nDaten: Michalopoulos, S., & Papaioannou, E. (2016)",
+    "\nDaten: WorldBank (2017)",
+    "\nDaten: WorldBank (2017)",
+    "\nDaten: WorldBank (2017)",
+    "\nDaten: Global Terrorism Database",
+    "\nDaten: PolityIV (2017)"
   ))
 
 # Plot
@@ -366,15 +366,13 @@ gdp_pol.df <- africa.df %>%
 # A (2) Facetted scatterplot
 gdp_pol.fig <- ggplot(data = gdp_pol.df) +
   geom_jitter(data = gdp_pol.df, aes(x = log(state1_gdp), y = state1_polity, 
-                                     color = factor(share_ethn, labels = c("No", "Yes")))) +
-  facet_grid(~ factor(typology,
-    levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
-  )) +
+                                     color = factor(share_ethn, labels = c("Nein", "Ja")))) +
+  facet_grid(~ fac_ind_de(typology)) +
   geom_hline(aes(yintercept = median_polity, group = typology), colour = "black", alpha = .3, size = 1.5) +
   geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black", alpha = .3, size = 1.5) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
-  scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), guide = guide_legend(title = "Shared ethnicities")) +
-  labs(x = "GDP p.c. (logged)", y = "PolityIV") +
+  scale_colour_manual(values  = c("Nein" = "grey", "Ja" = "black"), guide = guide_legend(title = "Geteilte Ethnien")) +
+  labs(x = "BIP pro Kopf (log.)", y = "Politisches System") +
   theme.basic
 
 # B (1) Zoomed in scatterplot for barrier & fortified borders
@@ -387,22 +385,19 @@ gdp_pol_fort.df <- gdp_pol.df %>%
 # ADD N_borders and N_countries
 gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, 
                            aes(x = log(state1_gdp), y = state1_polity,
-                               color = factor(share_ethn, labels = c("No", "Yes")))) +
+                               color = factor(share_ethn, labels = c("Nein", "Ja")))) +
   geom_jitter() +
   geom_text_repel(label = paste(gdp_pol_fort.df$state1, gdp_pol_fort.df$state2, sep = "-"),
                   segment.color = NA, key_glyph = "point") +
-  facet_grid(~ factor(typology,
-                      levels = c("landmark border", "frontier border", 
-                                 "checkpoint border", "barrier border", 
-                                 "fortified border"))) +
+  facet_grid(~ fac_ind_de(typology)) +
   geom_hline(aes(yintercept = median_polity, group = typology), colour = "black",
              alpha = .3, size = 1.5) +
   geom_vline(aes(xintercept = median_gdp, group = typology), colour = "black",
              alpha = .3, size = 1.5) +
-  scale_colour_manual(values  = c("No" = "grey", "Yes" = "black"), 
-                      guide = guide_legend(title = "Shared ethnicities")) +
+  scale_colour_manual(values  = c("Nein" = "grey", "Ja" = "black"), 
+                      guide = guide_legend(title = "Geteilte Ethnien")) +
   scale_x_continuous(breaks = log(c(400, 1000, 3000, 8000, 20000)), labels = c(400, 1000, 3000, 8000, 20000)) +
-  labs(x = "GDP p.c. (logged)", y = "PolityIV") +
+  labs(x = "BIP pro Kopf (log.)", y = "Politisches System") +
   theme.basic
 
 # World Religion (CoW)
