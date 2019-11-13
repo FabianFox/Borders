@@ -164,7 +164,7 @@ n_countries <- sum(africa.dim$n_states)
 
 # Number of bidrectional dyads
 n_borders <- dim(africa.df)[1]
-  
+
 # Overview: Dependent variable
 # Indicator
 # --------------------------------- #
@@ -374,6 +374,14 @@ gdp_pol.fig <- ggplot(data = gdp_pol.df) +
   scale_colour_manual(values  = c("Nein" = "grey", "Ja" = "black"), guide = guide_legend(title = "Geteilte Ethnien")) +
   labs(x = "BIP pro Kopf (log.)", y = "Politisches System") +
   theme.basic
+
+# Number of dyads with shared transnational ethnicities
+n_ethn <- africa.df %>%
+  group_by(typology) %>%
+  summarize(n_ethn = sum(share_ethn), 
+            count = n(),
+            missing = sum(is.na(share_ethn))) %>%
+  mutate(percentage = n_ethn/count * 100)
 
 # B (1) Zoomed in scatterplot for barrier & fortified borders
 # Figure 3
