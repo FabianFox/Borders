@@ -196,7 +196,7 @@ border.df <- border.df %>%
 ## -------------------------------------------------------------------------- ##
 # retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
 
-relig.df <- import("http://www.correlatesofwar.org/data-sets/world-religion-data/wrp-national-data-1/at_download/file", format = ",") %>%
+relig.df <- import("https://correlatesofwar.org/data-sets/world-religion-data/wrp-national-data-1/@@download/file/WRP_national.csv", format = ",") %>%
   select(1:40, -sumrelig) %>%
   filter(year == 2010) %>%
   gather(religion, rel_pop, -year, -name, -state, -pop) %>%
