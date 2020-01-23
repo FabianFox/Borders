@@ -14,7 +14,13 @@
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, igraph, rio, janitor, cowplot, ggrepel)
+p_load(tidyverse, countrycode, igraph, rio, janitor, cowplot, ggrepel, patchwork)
+
+## -------------------------------------------------------------------------- ##
+## -------------------------------------------------------------------------- ##
+##                            Data preparation                                ##
+## -------------------------------------------------------------------------- ##
+## -------------------------------------------------------------------------- ##
 
 # Load: Source data and border indicator
 ### ------------------------------------------------------------------------ ###
@@ -133,8 +139,16 @@ fac_ind_en <- function(x) {
 fac_ind_de <- function(x) {
   factor(x, levels = c("landmark border", "frontier border", "checkpoint border", 
                        "barrier border", "fortified border"),
-         labels = c("Grenzstein", "Niemandslandgrenze", "Kontrollpunktgrenze", 
+         labels = c("Grenzmarkierung", "Niemandslandgrenze", "Kontrollpunktgrenze", 
                        "Barrieregrenze", "fortifizierte Grenze"))
+}
+
+# German shortened
+fac_ind_de_short <- function(x) {
+  factor(x, levels = c("landmark border", "frontier border", "checkpoint border", 
+                       "barrier border", "fortified border"),
+         labels = c("Grenz-\nmarkierung", "Niemands-\nlandgrenze", "Kontrollpunkt-\ngrenze", 
+                    "Barriere-\ngrenze", "fortifizierte-\nGrenze"))
 }
 
 # (2) Theme for the plots
@@ -147,8 +161,14 @@ theme.basic <- theme_minimal() +
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
-# Descriptive analysis
 ## -------------------------------------------------------------------------- ##
+## -------------------------------------------------------------------------- ##
+##                         Monadic data analysis                              ##
+## -------------------------------------------------------------------------- ##
+## -------------------------------------------------------------------------- ##
+
+# Monadic data analysis
+## -------------------------------------------------------------------------- #
 # Basic description
 # Number of African states (p. 9)
 africa.dim <- tibble(
@@ -248,19 +268,18 @@ africa_descriptive[africa_descriptive$variable == "state1_nterror_3yrs_",
 
 # Graphical display of descriptive statistics
 africa_descriptive.fig <- africa_descriptive %>%
-  filter(!variable %in% c("state1_military_expenditure_log_pc_", "share_ethn_")) %>%
+  filter(!variable %in% c("state1_military_expenditure_log_pc_",
+                          "state1_nterror_3yrs_", "state1_military_pers_pc_")) %>%
   ggplot() +
   geom_point(aes(x = mean, y = variable)) +
-  geom_errorbarh(aes(y = variable, xmin = ymin, xmax = ymax), height = .2) +
+  geom_errorbarh(aes(y = variable, xmin = ymin, xmax = ymax), height = .1) +
   geom_text(stat = "identity", aes(x = mean, y = variable, 
                                    label = paste0("N = ", obs)), vjust = 2) + 
   scale_x_continuous(breaks = seq(-10, 10, 2), limits = c(-10, 10)) +
-  scale_y_discrete(breaks = c("state1_gdp_", "state1_military_pers_pc_", 
-                              "state1_nterror_3yrs_", "state1_polity_"),
+  scale_y_discrete(breaks = c("state1_gdp_", "share_ethn_", "state1_polity_"),
                    labels = c("BIP pro Kopf\n(in 1.000 USD)", 
-                              "Militärpersonal\n(pro 1.000 Einw.)", 
-                              "Terroristische Vorfälle\n(in Hunderten)", 
-                              "Politisches System (PolityIV)")) +
+                              "Geteilte Ethnien", 
+                              "Politisches System\n(PolityIV)")) +
   labs(x = "", y = "") +
   theme_minimal() +
   theme(
@@ -269,6 +288,27 @@ africa_descriptive.fig <- africa_descriptive %>%
     text = element_text(size = 14),
     axis.ticks.x = element_line(size = .5)
   )
+
+# Add figure of religious affiliation
+relig_descriptive <- africa.df %>%
+  group_by(state1_relig) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(percentage = n / sum(n)) 
+
+relig_descriptive.fig <- relig_descriptive %>%
+  ggplot(aes(x = factor(state1_relig, label = c("christlich", "islamisch", "jüdisch")),
+                        y = percentage)) +
+  geom_bar(stat = "identity") +
+  geom_text(stat = "identity", aes(label = paste0("N = ", n)), vjust = -0.5) +
+  scale_fill_grey() +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%")) +
+  labs(x = "", y = "", fill = "Mehrheitsreligion", title = "Mehrheitsreligionen") +
+  theme.basic +
+  theme(axis.ticks.x = element_line(size = .5))
+
+# Put the descriptive summary statistics together using patchwork
+descriptive.fig <- africa_descriptive.fig | relig_descriptive.fig
 
 # By regions
 # --------------------------------- #
@@ -421,7 +461,7 @@ relig.fig <- relig.df %>%
   geom_bar(aes(x = fac_ind_de(typology), y = percentage, 
                fill = factor(state1_relig, 
                              levels = c("chrst", "islm", "jud"),
-                             labels = c("christlich", "muslimisch", "jüdisch"))), 
+                             labels = c("christlich", "islamisch", "jüdisch"))), 
                stat = "identity") +
   scale_fill_grey() +
   scale_y_continuous(labels = function(x) paste0(x*100, "%")) +
@@ -433,8 +473,14 @@ relig.fig <- relig.df %>%
 # Recchi & Deutschmann (2019)
 # / -------------- /
 
-# Dyadic analysis
+
 ## -------------------------------------------------------------------------- ##
+## -------------------------------------------------------------------------- ##
+##                           Dyadic data analysis                             ##
+## -------------------------------------------------------------------------- ##
+## -------------------------------------------------------------------------- ##
+
+# Data preparation
 
 # Dirty solution to create a directed typology
 # (1) Duplicate dataset, swap country identifiers and rename them
@@ -552,6 +598,8 @@ africa_dyad.df %>%
 
 # Compute descriptive statistics
 ## -------------------------------------------------------------------------- ##
+
+# (Absolute) Difference between state1 and state2
 africa_dyad.df <- africa_dyad.df %>%
   mutate(
     
@@ -568,36 +616,97 @@ africa_dyad.df <- africa_dyad.df %>%
     absratioPol = ifelse(ratioPol < 1 & ind_symmetry == 1, 1 / ratioPol, ratioPol) # use greater ratio for symmetric dyads
   )
 
-# Absolute GDP ratio by border typology
+# Absolute GDP ratio by dyadic border typology
 dyad.vars <- africa_dyad.df %>%
   filter(!is.na(state1_gdp) & !is.na(state2_gdp)) %>%
   group_by(fdyad_typ) %>%
   summarise(
-    mGDPratio = mean(absratioGDP),
-    mGDPdiff =  mean(diffGDP),
+    mGDPratio = mean(absratioGDP), # GDP absratio
+    mGDPdiff =  mean(diffGDP),     # GDP diff
+    
     n = n()
   ) %>%
   mutate(asymmetry = ifelse(fdyad_typ %in% c("FF", "LL", "CC", "BB", "WW"), 0, 1)) %>%
   arrange(asymmetry, mGDPdiff)
 
+# Neighbour characteristics
+neighbour_char <- africa_dyad.df %>%
+  group_by(state1_typology) %>%
+  summarise(
+    # GDP
+    mean_neighbourGDP = mean(state2_gdp, na.rm = TRUE),
+    median_neighbourGDP = median(state2_gdp, na.rm = TRUE),
+    mean_neighbour_absdiffGDP = mean(absdiffGDP, na.rm = TRUE),
+    median_neighbour_absdiffGDP = median(absdiffGDP, na.rm = TRUE),
+    # Polity
+    mean_neighbourPol = mean(state2_polity, na.rm = TRUE),
+    median_neighbourPol = median(state2_polity, na.rm = TRUE),
+    mean_neighbour_absdiffPol = mean(absdiffPol, na.rm = TRUE),
+    median_neighbour_absdiffPol = median(absdiffPol, na.rm = TRUE),
+    
+    n = n()) %>%
+  arrange(fac_ind_de(state1_typology))
+
+
 # Plots
+## -------------------------------------------------------------------------- ##
+
+# Plots of neighbour characteristics by state1's typology
+## -------------------------------------------------------------------------- ##
+
+# Neigbours GDP (mean absdiff)
+gdp_neighbour_absdiff.fig <- ggplot(neighbour_char) +
+  geom_bar(aes(x = fac_ind_de(state1_typology), y = median_neighbour_absdiffGDP), 
+           stat = "identity") +
+  geom_text(aes(x = fac_ind_de(state1_typology), y = median_neighbour_absdiffGDP, 
+            label = paste0("N=", n)), vjust = -0.5) +
+  labs(x = "", y = "", title = "BIP") +
+  theme.basic
+  
+
+# Neigbours Polity (mean absdiff)
+pol_neighbour_absdiff.fig <- ggplot(neighbour_char) +
+  geom_bar(aes(x = fac_ind_de(state1_typology), y = median_neighbour_absdiffPol), 
+           stat = "identity") +
+  geom_text(aes(x = fac_ind_de(state1_typology), y = median_neighbour_absdiffPol, 
+                label = paste0("N=", n)), vjust = -0.5) +
+  labs(x = "", y = "", title = "PolityIV") +
+  theme.basic 
+
+# Neighbour religion (COW)
+relig_neighbour.df <- africa_dyad.df %>%
+  group_by(state2_relig, state1_typology) %>%
+  summarise(n = n()) %>%
+  group_by(state1_typology) %>%
+  mutate(percentage = n / sum(n))
+
+relig_neighbour.fig <- relig_neighbour.df %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind_de(state1_typology), y = percentage, 
+               fill = factor(state2_relig, 
+                             levels = c("chrst", "islm", "jud"),
+                             labels = c("christlich", "islamisch", "jüdisch"))), 
+           stat = "identity") +
+  scale_fill_grey() +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%")) +
+  labs(x = "", y = "", fill = "Mehrheitsreligion", title = "Religion") +
+  theme.basic
+
+# Arrange
+neighbour.fig <- gdp_neighbour_absdiff.fig | pol_neighbour_absdiff.fig
+
+# Plots for full dyadic data (bordertypology pairs)
 ## -------------------------------------------------------------------------- ##
 
 # GDPDiff by typology
 # --------------------------------- #
-# GDP difference
+# Plot: GDP difference
 # Note: Typology sorted by order in dyad.vars
 gdp_diff_dyad.fig <- ggplot(dyad.vars) +
   geom_bar(aes(x = factor(fdyad_typ, fdyad_typ), y = mGDPdiff), stat = "identity") +
   geom_text(aes(x = factor(fdyad_typ, fdyad_typ), y = mGDPdiff, label = paste0("N=", n)), vjust = -1) +
   labs(x = "", y = "") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # Plot: GDP ratio
 # For symmetric dyads the greater ratio is used
@@ -607,13 +716,7 @@ gdp_ratio_dyad.fig <- dyad.vars %>%
   geom_bar(aes(x = factor(fdyad_typ, fdyad_typ), y = mGDPratio), stat = "identity") +
   geom_text(aes(x = factor(fdyad_typ, fdyad_typ), y = mGDPratio, label = paste0("N=", n)), vjust = -1) +
   labs(x = "", y = "") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # Polity difference by typology
 # --------------------------------- #
@@ -634,13 +737,7 @@ pol_diff_dyad.fig <- dyad.df %>%
     label = paste0("N=", n)
   ), vjust = -1) +
   labs(x = "", y = "") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # PolityIV ratio
 # For symmetric dyads the greater ratio is used
@@ -660,17 +757,11 @@ pol_ratio_dyad.fig <- dyad.df %>%
     label = paste0("N=", n)
   ), vjust = -1) +
   labs(x = "", y = "") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # Religion by typology
 # --------------------------------- #
-border_relig.df <- dyad.df %>%
+border_relig.df <- africa_dyad.df %>%
   group_by(fdyad_typ, fdyad_shrelig) %>%
   count(fdyad_shrelig) %>%
   group_by(fdyad_typ) %>%
@@ -682,13 +773,7 @@ border_relig.fig <- border_relig.df %>%
   scale_fill_grey(guide = guide_legend(title = "Religion")) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
   labs(x = "", y = "") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # Typology by ethnicity
 # --------------------------------- #
@@ -703,13 +788,7 @@ border_ethn.fig <- border_ethn.df %>%
   scale_fill_grey(guide = guide_legend(title = "Shared ethnicities")) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
   labs(x = "", y = "") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5)
-  )
+  theme.basic
 
 # 
 border_num_ethn.df <- africa_dyad.df %>%
@@ -728,14 +807,7 @@ gdp_pol_dyad.fig <- ggplot(data = africa_dyad.df) +
                       levels = c("landmark border", "frontier border", "checkpoint border", "barrier border", "fortified border")
   )) +
   labs(x = "GDP p.c. (logged)", y = "PolityIV") +
-  theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+  theme.basic
 
 # Save figures
 ## -------------------------------------------------------------------------- ##
@@ -744,43 +816,62 @@ gdp_pol_dyad.fig <- ggplot(data = africa_dyad.df) +
 # --------------------------------- #
 
 # Figure 1
-# Relative distribution of border infrastructure
-ggsave(
-  plot = ind.perc.fig, "./output/figures/Africa_RelativeDistribution.tiff", width = 8, height = 6, unit = "in",
-  dpi = 300
-)
-
 # Descriptive statistics
 ggsave(
-  plot = africa_descriptive.fig, "./output/figures/Africa_DescriptiveStats.tiff", width = 6, height = 6, unit = "in",
+  plot = descriptive.fig, ".O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Grafiken/Fig1 - DescriptiveStats.tiff", width = 12.5, height = 8, unit = "in",
   dpi = 300
 )
 
+# Figure 2
+# Relative distribution of border infrastructure
+ggsave(
+  plot = ind.perc.fig, "O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Grafiken/Fig2 - Africa_RelativeDistribution.tiff", width = 8, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Figure 3
+# Scatterplot (A)
+ggsave(
+  plot = gdp_pol.fig, "O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Grafiken/Africa_ScatterGDP_Pol.tiff", width = 8, height = 8, unit = "in",
+  dpi = 300
+)
+
+# Figure 4
+# Religion by typology
+ggsave(
+  plot = relig.fig, "O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Grafiken/Fig 4 - Africa_religion_typology.tiff", width = 5, height = 5, unit = "in",
+  dpi = 300
+)
+
+# Neighbour characteristics
+# Figure 5
+# A) Polity & GDP
+ggsave(
+  plot = neighbour.fig, "O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Grafiken/Fig 5 - Africa_NeighbourDescriptive.tiff", width = 8, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Figure 6
+# B) Religion
+ggsave(
+  plot = relig_neighbour.fig, "O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Grafiken/Fig 6 - Africa_NeighbourReligion.tiff", width = 5, height = 5, unit = "in",
+  dpi = 300
+)
+
+# Figure 7
+# Scatterplot (B)
+ggsave(
+  plot = gdp_pol_fort.fig, "O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Grafiken/Africa_ScatterGDP_Pol_Fort.tiff", width = 8, height = 8, unit = "in",
+  dpi = 300
+)
+
+# Appendix
 # Plots of indicator by independent variables
 ggsave(
   plot = combined_bvars, "./output/figures/DescriptivePlots.tiff", width = 12.5, height = 8, unit = "in",
   dpi = 300
 )
 
-# Figure 2
-# Scatterplot (A)
-ggsave(
-  plot = gdp_pol.fig, "./output/figures/Africa_ScatterGDP_Pol.tiff", width = 8, height = 8, unit = "in",
-  dpi = 300
-)
-
-# Figure 3
-# Scatterplot (B)
-ggsave(
-  plot = gdp_pol_fort.fig, "./output/figures/Africa_ScatterGDP_Pol_Fort.tiff", width = 8, height = 8, unit = "in",
-  dpi = 300
-)
-
-# Religion by typology
-ggsave(
-  plot = relig.fig, "./output/figures/Africa_religion_typology.tiff", width = 6, height = 6, unit = "in",
-  dpi = 300
-)
 
 # Dyadic analysis
 # --------------------------------- #
