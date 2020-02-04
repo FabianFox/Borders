@@ -16,6 +16,7 @@ p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats, rio)
 # - Direct Contiguity
 ## -------------------------------------------------------------------------- ##
 # Directed dyads retrieved from http://www.correlatesofwar.org/data-sets/direct-contiguity
+# Latest observation: 2016
 contdird <- import(file = "./data/contdird.csv", 
                    header = TRUE, stringsAsFactors = FALSE)
 
@@ -41,17 +42,18 @@ contdird <- contdird %>%
 # Join macro level indicators
 ## -------------------------------------------------------------------------- ##
 # Data:
-# - IBAD (Border Agreement Data)
+# - IBAD (Border Agreement Data) [2001]
 # - World Bank (GDP p.c. in current US$ | Total Population |
-#               Armed forces personnel, total | Military expenditure, current LCU)
-# - Polity IV 
-# - Visa Network Data
-# - CoW: World Religion
-# - CoW: Militarized Interstate Disputes (v4.3) 
+#               Armed forces personnel, total | Military expenditure, current LCU) 
+#   [2017]
+# - Polity IV [2017]
+# - Visa Network Data [2010]
+# - COW: World Religion [2010]
+# - COW: Militarized Interstate Disputes (v4.3) 
 
 
 # Join International Border Agreement Dataset (Owsiak et al. 2018)
-# Note: Data up until 2001
+# Latest observation: 2001
 # Created in: IBAD-DataClean.R
 ## -------------------------------------------------------------------------- ##
 # Load
@@ -192,9 +194,10 @@ border.df$visa[is.na(border.df$visa) & !is.na(border.df$visa.available)] <- 0
 border.df <- border.df %>%
   select(-visa.available)
 
-# CoW: World Religion Data
+# COW: World Religion Data
 ## -------------------------------------------------------------------------- ##
 # retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
+# Year: 2017 
 
 relig.df <- import("https://correlatesofwar.org/data-sets/world-religion-data/wrp-national-data-1/@@download/file/WRP_national.csv", format = ",") %>%
   select(1:40, -sumrelig) %>%
@@ -234,20 +237,40 @@ border.df <- border.df %>%
 border.df[border.df$state1 =="SSD",]$state1_relig <- "chrst"
 border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
 
-# CoW: Militarized Interstate Disputes (v4.3) 
-# Variable: XXXX
+# COW: Dyadic MIDs and Dyadic Wars V3.1
+# Variable: statea, stateb, strtyr, endyear, year, outcome
 # Year: 2010 (latest)
+# Note: variable highact entails categories for 'fortify border' & 'border violation'
 ## -------------------------------------------------------------------------- ##
 # retrieved from http://www.correlatesofwar.org/data-sets/MIDs
+# direct: https://correlatesofwar.org/data-sets/MIDs/dyadic-mids-and-dyadic-wars-v3.1/view
 
-# dispute.df <- import("./data/dyadic_mid_31_may_2018.dta")
+# Preprocess MID
+dispute.df <- import("./data/dyadic_mid_31_may_2018.dta") %>%
+  group_by(statea, stateb) %>%
+  filter(row_number(desc(year)) == 1,
+         strtyr >= 2000) %>%
+  ungroup() %>%
+  mutate(state1 = countrycode(sourcevar = statea, origin = "cown", 
+                              destination = "iso3c", custom_match = custom.match),
+         state2 = countrycode(sourcevar = stateb, origin = "cown", 
+                              destination = "iso3c", custom_match = custom.match),
+         disp_since2000 = 1) %>%
+  select(state1, state2, disp_year = year, disp_outcome = outcome, disp_since2000)
+
+# Join to source data 
+border.df <- border.df %>%
+  left_join(dispute.df)
 
 # START: Global Terrorism Database 
 # Variable:
 # Year: 
+# Goal: Number of (fatal) terror incidents on homeland territory & number of terror
+#       incidents in neighbouring country
 ## -------------------------------------------------------------------------- ##
 # retrieved from https://gtd.terrorismdata.com/files/gtd-1970-2018/
 
+# Preprocess GTD
 # gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
 #   filter(between(iyear, 2015, 2018)) %>%
 #   select(eventid, iyear, imonth, iday, approxdate,   # date of incident
@@ -441,7 +464,7 @@ border.df <- border.df %>%
 # (code by AJO)
 ## -------------------------------------------------------------------------- ##
 # Geography from Brochmann, Rod & Gleditsch (2012)
-# Data years 1945-2001, reduced to data from 2001
+# Data years 1945-2001
 
 # Custom match for Serbia (SRB, 345)
 custom.match <- custom.match[1]
@@ -456,10 +479,11 @@ geo.df <- import("./data/Replication_BrochmannRodGleditsch.dta") %>%
   select(
     statea, stateb,
     lndistan, # distance between capitals (ln)
-    lnrtrade, 
     rti, lnrti, # rugged terrain
     border_length_geo = GeoDist, # geodesic distance, i.e. border length
-    PercForest,  PercSwamp, PercRiv, PercLak, PercRivLak, PercMnt,
+    distance,
+    perc_forest = PercForest, perc_swamp = PercSwamp, perc_river = PercRiv, 
+    perc_lake = PercLak, perc_river_lake = PercRivLak, perc_mountain = PercMnt,
     PercCF1, PercCF2, PopCnt, lnpopcnt ## ask authors for details about these vars
   )
 
