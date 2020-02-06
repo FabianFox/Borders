@@ -5,7 +5,6 @@
 
 # Notes & Issues
 # - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
-# - Integrate: CoW Military Interstate Disputes
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
@@ -46,6 +45,7 @@ contdird <- contdird %>%
 # - World Bank (GDP p.c. in current US$ | Total Population |
 #               Armed forces personnel, total | Military expenditure, current LCU) 
 #   [2017]
+# - COW: Trade [2014]
 # - Polity IV [2017]
 # - Visa Network Data [2010]
 # - COW: World Religion [2010]
@@ -94,6 +94,41 @@ border.df <- contdird %>%
     state1_military_expenditure_log_pc = log((state1_military_expenditure / state1_pop) * 1000000),
     state2_military_expenditure_log_pc = log((state2_military_expenditure / state2_pop) * 1000000)
   ) 
+
+# COW: Trade v4.0
+# Variable: flow1, flow2
+# Year: 2014
+# retrieved from https://correlatesofwar.org/data-sets/bilateral-trade
+## -------------------------------------------------------------------------- ##
+trade.df <- import("C:/Users/guelzauf/Seafile/Meine Bibliothek/Projekte/C01_Grenzen/Data/Data/COW_Trade_4.0/Dyadic_COW_4.0.csv") %>%
+  select(state1 = ccode1, state2 = ccode2, year, import = flow1, export = flow2) %>%
+  filter(year == 2014) %>%
+  mutate(state1 = countrycode(sourcevar = state1, origin = "cown", destination = "iso3c", custom_match = custom.match),
+         state2 = countrycode(sourcevar = state2, origin = "cown", destination = "iso3c", custom_match = custom.match),
+         import = na_if(import, -9),
+         export = na_if(export, -9))
+  
+
+# Make the dataset (long) dyadic
+# (1) Duplicate dataset, swap country identifiers and rename them
+swap.df <- trade.df %>%
+  rename(
+    state1 = state2,
+    state2 = state1,
+  ) %>%
+  rename(export = import,
+         import = export)
+
+# (2) Merge trade.df and swap.df
+trade.df <- trade.df %>%
+  bind_rows(., swap.df) %>%
+  mutate(dyadName = paste(state1, state2, sep = "_")) %>%
+  select(dyadName, state1, state2, export, import) %>%
+  arrange(dyadName)
+
+# (3) Join to border.df
+border.df <- border.df %>%
+  left_join(y = trade.df)
 
 # Polity IV
 # Variable: Polity2
@@ -195,9 +230,9 @@ border.df <- border.df %>%
   select(-visa.available)
 
 # COW: World Religion Data
-## -------------------------------------------------------------------------- ##
-# retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
 # Year: 2017 
+# retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
+## -------------------------------------------------------------------------- ##
 
 relig.df <- import("https://correlatesofwar.org/data-sets/world-religion-data/wrp-national-data-1/@@download/file/WRP_national.csv", format = ",") %>%
   select(1:40, -sumrelig) %>%
