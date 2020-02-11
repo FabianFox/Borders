@@ -2,9 +2,6 @@
 
 # Notes:
 # - Countries that need further checking:
-#   - Cases with insufficient information:
-#   - africa.df %>%
-#        filter(information_density == "low")
 
 # Issues:
 # - Add religion to descriptive summary
@@ -412,8 +409,7 @@ gdp_pol.df <- africa.df %>%
   )
 
 # A (2) Facetted scatterplot
-set.seed(42)
-gdp_pol.fig <- ggplot(data = gdp_pol.df) +
+set.seed(42); gdp_pol.fig <- ggplot(data = gdp_pol.df) +
   geom_jitter(aes(x = log(state1_gdp), y = state1_polity, 
                   color = factor(share_ethn, labels = c("Nein", "Ja")))) +
   facet_grid(~ fac_ind_de(typology)) +
@@ -427,6 +423,11 @@ gdp_pol.fig <- ggplot(data = gdp_pol.df) +
          "\nAnzahl von Staaten: ", length(unique(gdp_pol.df$state1)))) +
   theme.basic
 
+# Mediane
+gdp_pol.df %>%
+  distinct(typology, median_gdp, median_polity) %>%
+  mutate(median_exp_gdp = exp(median_gdp))
+
 # Number of dyads with shared transnational ethnicities
 n_ethn <- africa.df %>%
   group_by(typology) %>%
@@ -436,15 +437,14 @@ n_ethn <- africa.df %>%
   mutate(percentage = n_ethn/count * 100)
 
 # B (1) Zoomed in scatterplot for barrier & fortified borders
-# Figure 3
+# Figure 6
 # --------------------------------- #
 gdp_pol_fort.df <- gdp_pol.df %>%
   filter(typology %in% c("fortified border", "barrier border"))
 
 # B (2)                         
 # ADD N_borders and N_countries
-set.seed(42)
-gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, 
+set.seed(42); gdp_pol_fort.fig <- ggplot(data = gdp_pol_fort.df, 
                            aes(x = log(state1_gdp), y = state1_polity,
                                color = factor(share_ethn, labels = c("Nein", "Ja")))) +
   geom_jitter() +
@@ -671,6 +671,7 @@ neighbour_char <- africa_dyad.df %>%
 # Plots of neighbour characteristics by state1's typology
 ## -------------------------------------------------------------------------- ##
 
+# Figure 4
 # Neigbours GDP (mean absdiff)
 gdp_neighbour_absdiff.fig <- ggplot(neighbour_char) +
   geom_bar(aes(x = fac_ind_de(state1_typology), y = median_neighbour_absdiffGDP), 
@@ -723,6 +724,7 @@ direction_diff <- africa_dyad.df %>%
   summarise(share_direction_pol = sum(higher_pol) / n() * 100,
             share_direction_gdp = sum(higher_gdp) / n() * 100) 
 
+# Figure 5
 # Neighbour religion (COW)
 relig_neighbour.df <- africa_dyad.df %>%
   group_by(state2_relig, state1_typology) %>%
@@ -923,38 +925,21 @@ ggsave(
   dpi = 300
 )
 
-
-# Dyadic analysis
+# Word table of observations
 # --------------------------------- #
+word.tbl <- africa.df %>%
+  select(state1, state2, typology) %>%
+  mutate(state1 = paste0(countrycode(state1, "iso3c", "country.name.de"), " (", state1, ")"),
+         state2 = paste0(countrycode(state2, "iso3c", "country.name.de"), " (", state2, ")"),
+         typology = case_when(
+           typology == "landmark border" ~ "Grenzmarkierung",
+           typology == "frontier border" ~ "Niemandslandgrenze",
+           typology == "checkpoint border" ~ "Kontrollpunktgrenze",
+           typology == "barrier border" ~ "Barrieregrenze",
+           typology == "fortified border" ~ "fortifizierte Grenze"
+         ))
 
-# Polity
-ggsave(
-  plot = pol_diff_dyad.fig, "./output/figures/Africa_PolDyad_Diff.tiff", width = 6, height = 6, unit = "in",
-  dpi = 300
-)
-
-# GDP (diff)
-ggsave(
-  plot = gdp_diff_dyad.fig, "./output/figures/Africa_GDPDyad_Diff.tiff", width = 6, height = 6, unit = "in",
-  dpi = 300
-)
-
-# GDP (ratio)
-ggsave(
-  plot = gdp_ratio_dyad.fig, "./output/figures/Africa_GDPDyad_Ratio.tiff", width = 6, height = 6, unit = "in",
-  dpi = 300
-)
-
-# Relig by border type
-ggsave(
-  plot = border_relig.fig, "./output/figures/Africa_Border_Relig.tiff", width = 6, height = 6, unit = "in",
-  dpi = 300
-)
-
-# Arrange plots with cowplot
-plot_grid(gdp.fig, polity.fig, nrow = 2)
-
-
+export(word.tbl, "O:/Grenzen der Welt/Projekte/Afrikanische Grenzen/Daten/Indikator.csv")
 
 ## -------------------------------------------------------------------------- ##
 ## -------------------------------------------------------------------------- ##
