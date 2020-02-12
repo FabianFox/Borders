@@ -91,6 +91,8 @@ border.df <- contdird %>%
     state2_military_expenditure = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CN,
     state1_military_pers_pc = (state1_military_pers / state1_pop) * 1000,
     state2_military_pers_pc = (state2_military_pers / state2_pop) * 1000,
+    state1_military_expenditure_pc = (state1_military_expenditure / state1_pop) * 1000000,
+    state2_military_expenditure_pc = (state2_military_expenditure / state2_pop) * 1000000,
     state1_military_expenditure_log_pc = log((state1_military_expenditure / state1_pop) * 1000000),
     state2_military_expenditure_log_pc = log((state2_military_expenditure / state2_pop) * 1000000)
   ) 
