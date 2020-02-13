@@ -59,6 +59,9 @@ barriers.av.join <- readRDS("./data/border data/Avdan 2019.rds") %>%
 ### ------------------------------------------------------------------------ ###
 barriers.df <- bind_rows(mget(ls()[which(str_detect(ls(), "join") == TRUE)]))
 
+# Export
+# export(barriers.df, "./analysis/Fence data/barriers_df.rds")
+
 # Count occurences and remove duplicated borders
 # Note: Some datasets do not consider direction of border fortification
 barriers.df.join <- barriers.df %>%
@@ -68,9 +71,6 @@ barriers.df.join <- barriers.df %>%
   filter(n >= 1) %>%
   distinct() %>%
   arrange(state1, state2)
-
-# Export
-# export(barriers.df.join, "./analysis/Fence data/barrier_df.rds")
 
 # Housekeeping
 ### ------------------------------------------------------------------------ ###
