@@ -69,6 +69,9 @@ barriers.df.join <- barriers.df %>%
   distinct() %>%
   arrange(state1, state2)
 
+# Export
+# export(barriers.df.join, "./analysis/Fence data/barrier_df.rds")
+
 # Housekeeping
 ### ------------------------------------------------------------------------ ###
 rm(list = setdiff(ls(), 
