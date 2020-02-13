@@ -301,15 +301,15 @@ border.df <- border.df %>%
 
 # START: Global Terrorism Database 
 # Variable:
-# Year: 
+# Year: 2014-2017
 # Goal: Number of (fatal) terror incidents on homeland territory & number of terror
 #       incidents in neighbouring country
 ## -------------------------------------------------------------------------- ##
 # retrieved from https://gtd.terrorismdata.com/files/gtd-1970-2018/
 
 # Preprocess GTD
-# gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
-#   filter(between(iyear, 2015, 2018)) %>%
+#gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
+#   filter(between(iyear, 2014, 2017)) %>%
 #   select(eventid, iyear, imonth, iday, approxdate,   # date of incident
 #          country, country_txt, longitude, latitude,  # location of incident
 #          starts_with("natlty"),                      # nationality of victims
