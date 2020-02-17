@@ -68,14 +68,19 @@ contdird <- contdird %>%
 # GDP p.c. in current US$ - "NY.GDP.PCAP.CD"
 # Total Population - "SP.POP.TOTL"
 # Armed forces personnel, total - MS.MIL.TOTL.P1
-# Military expenditure, current LCU - MS.MIL.XPND.CN
+# Military expenditure (current LCU) - MS.MIL.XPND.CN
+# Military expenditure (% of GDP) - MS.MIL.XPND.GD.ZS
+
+# not available via API (yet)
+# Military expenditure (current USD) - MS.MIL.XPND.CD
+
 # Year: 2017 (accessed: 2019/11/05)
 ## -------------------------------------------------------------------------- ##
 # (1)
 # Download data (mrv = newest available; here: 2017)
 wb.info <- wb(country = unique(contdird$state1),
               indicator = c("NY.GDP.PCAP.CD", "SP.POP.TOTL", "MS.MIL.TOTL.P1", 
-                            "MS.MIL.XPND.CN"), 
+                            "MS.MIL.XPND.CN", "MS.MIL.XPND.GD.ZS"), 
               startdate = 2017, enddate = 2017, return_wide = TRUE)
 
 # (2) Match to base data
@@ -87,15 +92,21 @@ border.df <- contdird %>%
     state2_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD,
     state1_military_pers = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.TOTL.P1,
     state2_military_pers = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.TOTL.P1,
-    state1_military_expenditure = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CN,
-    state2_military_expenditure = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CN,
-    state1_military_pers_pc = (state1_military_pers / state1_pop) * 1000,
-    state2_military_pers_pc = (state2_military_pers / state2_pop) * 1000,
-    state1_military_expenditure_pc = (state1_military_expenditure / state1_pop) * 1000000,
-    state2_military_expenditure_pc = (state2_military_expenditure / state2_pop) * 1000000,
-    state1_military_expenditure_log_pc = log((state1_military_expenditure / state1_pop) * 1000000),
-    state2_military_expenditure_log_pc = log((state2_military_expenditure / state2_pop) * 1000000)
-  ) 
+    state1_military_expenditure_lcu = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CN,
+    state2_military_expenditure_lcu = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CN,
+#    state1_military_expenditure_usd = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
+#    state2_military_expenditure_usd = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
+    state1_military_expenditure_perc_gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.GD.ZS,
+    state2_military_expenditure_perc_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.GD.ZS,
+    state1_military_pers_pc = state1_military_pers / state1_pop,
+    state2_military_pers_pc = state2_military_pers / state2_pop,
+    state1_military_pers_p1000 = (state1_military_pers / state1_pop) * 1000,
+    state2_military_pers_p1000 = (state2_military_pers / state2_pop) * 1000,
+    state1_military_expenditure_lcu_pc = state1_military_expenditure_lcu / state1_pop,
+    state2_military_expenditure_lcu_pc = state2_military_expenditure_lcu / state2_pop,
+    state1_military_expenditure_lcu_pmil = (state1_military_expenditure_lcu / state1_pop) * 1000000,
+    state2_military_expenditure_lcu_pmil = (state2_military_expenditure_lcu / state2_pop) * 1000000
+  )
 
 # COW: Trade v4.0
 # Variable: flow1, flow2
@@ -361,10 +372,10 @@ border.df <- border.df %>%
 # List the region folders who store country json-files
 folders <- list.dirs(path = "./data/factbook.json-master")
 
-# Information stored in certain folders not needed
+# Information stored in certain folders (master, meta, world) not needed
 folders <- folders[-c(1, 9, 15)]
 
-# List the files in the region folders
+# List the files in the region folders (n = 260)
 files <- vector("list", length(folders))
 
 for (i in seq_along(folders)) {
@@ -399,9 +410,23 @@ for (i in seq_along(files)) {
 }
 
 # Check here: https://www.cia.gov/library/publications/the-world-factbook/appendix/appendix-d.html
+# Which countrynames are missing (add as custom_match)
+missing <- flatten_chr(state)[which(is.na(countrycode(flatten_chr(state), origin = "fips", destination = "iso3c")))]
+
+# Custom match for several cases
+custom.match.cia <- c("OD" = "SSD", "KV" = "XKX")
+
+# Drop: at: Ashmore and Cartier Islands, cr: Coral Sea Islands, um: US Pacific Island Wildlife Refuges, 
+#       wq: Wake Island, bq: Navassa Island, cc: Curacao, rn: Sant Marten, 
+#       sk: Sint Maarten, pf: Paracel Islands, pg: Spratly Islands,
+#       ax: Akrotiri, dx: Dhekelia, ee: European Union, jn: Jan Mayen, gz: Gaza Strip,
+#       ip: Clipperton Island, oo: Southern Ocean, xo: Indian Ocean, xq: Arctic Ocean,
+#       zh: Atlantic Ocean, zn: Pacific Ocean
 
 # Name the list elements (country identifier, FIPS105 -> ISO3)
-names(border.cia) <- countrycode(flatten_chr(state), origin = "fips", destination = "iso3c")
+names(border.cia) <- countrycode(flatten_chr(state), origin = "fips", 
+                                 destination = "iso3c", 
+                                 custom_match = custom.match.cia)
 
 # Remove unidentified countries
 border.cia <- border.cia[-c(which(is.na(names(border.cia))))] 
@@ -471,13 +496,15 @@ borderlength.df[which(is.na(borderlength.df$bstate)),] <- c("SAU", "TUR", "MYS")
 
 # Rename borderlength.df and join to base data
 borderlength.df <- borderlength.df %>%
-  rename(state2 = bstate)
+  rename(state2 = bstate) %>%
+  group_by(state1, state2) %>%
+  summarise(blength = sum(strtoi(blength), na.rm = FALSE))
 
 # Join the individual border lengths to the main data
 border.df <- border.df %>%
-  left_join(y = borderlength.df) %>%
-  left_join(y = border.cia %>%
-              select(country, terrain), by = c("state1" = "country"))
+  left_join(borderlength.df, by = c("state1", "state2")) %>%
+  left_join(border.cia %>%
+              select(state1 = country, terrain), by = c("state1"))
 
 # Create a dyad identifier variable
 ## -------------------------------------------------------------------------- ##
