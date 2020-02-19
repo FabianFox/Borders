@@ -67,7 +67,7 @@ border.df <- border.df %>%
 
 # Join the source and indicator
 ## -------------------------------------------------------------------------- ##
-# duplicates bc some countries share multiple borders, i.e. MAR/ESP (Ceuta + Melilla) 
+# duplicates bc some countries share multiple borders, i.e. RUS/CHN
 africa.df <- border.df %>%
   filter(continent1 == "Africa" | continent2 == "Africa") %>%
   left_join(africa.df) %>%
