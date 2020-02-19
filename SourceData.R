@@ -23,7 +23,7 @@ contdird <- import(file = "./data/contdird.csv",
 # and remove unnecessary variables
 contdird <- contdird %>%
   select(state1no, state2no, year, conttype) %>%
-  filter(year == 2016 & conttype == 1) 
+  filter(year == 2016 & conttype == 1)
 
 # Turn Correlates of War IDs into ISO3 codes
 # (1) Some custom matches, i.e. 347 (Kosovo) = XKX, 345 (Serbia) = SRB 
@@ -36,7 +36,11 @@ contdird <- contdird %>%
   select(state1, state2, conttype, year) %>%
   add_row(state1 = c("NGA", "TCD"), state2 = c("TCD", "NGA"), # Lake Chad fell dry
           conttype = c(1, 1), year = c(2016, 2016)) %>%
-  arrange(state1, state2)
+  arrange(state1, state2) %>%
+  filter(!(state1 == "ARE" & state2 == "QAT"), # no shared border (since 1974): https://bit.ly/39EOy4Y
+         !(state1 == "QAT" & state2 == "ARE"),
+         !(state1 == "MMR" & state2 == "PAK"), # never shared a border 
+         !(state1 == "PAK" & state2 == "MMR"))
 
 # Join macro level indicators
 ## -------------------------------------------------------------------------- ##
