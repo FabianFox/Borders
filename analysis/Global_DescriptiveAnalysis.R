@@ -27,8 +27,11 @@ indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTy
                        sheet = 1, na = "NA") %>%
   as_tibble() %>%
   select(1:3, 16) %>%
-  filter(!is.na(typology)) %>%
-  clean_names()
+  filter(!is.na(typology),
+         !(state1 == "ARE" & state2 == "QAT"),        # no shared border (since 1974) 
+         !(state1 == "QAT" & state2 == "ARE")) %>%   # https://bit.ly/39EOy4Y
+  clean_names() %>%
+  distinct(state1, state2, .keep_all = TRUE)
 
 # Add year of border installation
 # Data from BordersJoin.R
@@ -50,10 +53,9 @@ fortified_borders.df <- indicator.df %>%
   as_tibble()
 
 # Merge
-# Duplicates because some countries share multiple borders, i.e. MAR/ESP (Ceuta + Melilla) 
+# duplicates bc some countries share multiple borders, i.e. RUS/CHN
 border.df <- indicator.df %>%
   left_join(border.df) %>%
-  distinct(state1, state2, .keep_all = TRUE) %>%
   mutate(
     continent1 = countrycode(state1, "iso3c", "continent", custom_match = c("XKX" = "Europe")),
     continent2 = countrycode(state2, "iso3c", "continent", custom_match = c("XKX" = "Europe")),
