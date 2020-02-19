@@ -275,6 +275,11 @@ avdan2019.t2 <- import("./data/border data/Avdan 2019 - Visas and Walls_2.xlsx",
 # (2) Combine
 avdan2019.df <- bind_rows(avdan2019.t1, avdan2019.t2)
 
+# Some countrycodes are not matched properly
+barriers.av[1, c("state1", "state2")] <- c("KOR", "PRK")
+barriers.av[10, "state2"] <- "PRK"
+barriers.av[28, "state2"] <- "PRK"
+
 # GlobalSecurity.org
 # 
 # Data from: 
