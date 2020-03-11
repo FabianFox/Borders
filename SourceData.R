@@ -365,7 +365,7 @@ border.df <- border.df %>%
 
 # World Refugee Dataset
 # Variable:
-# Year:
+# Year: 2015 (latest)
 ## -------------------------------------------------------------------------- ##
 # retrieved from: Marbach (2018), Link: https://github.com/sumtxt/wrd
 
