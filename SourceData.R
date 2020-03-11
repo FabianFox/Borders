@@ -363,6 +363,30 @@ border.df <- border.df %>%
          state1_death_toll_3yrs = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$death_toll_3yrs,
          state2_death_toll_3yrs = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$death_toll_3yrs)
 
+# World Refugee Dataset
+# Variable:
+# Year:
+## -------------------------------------------------------------------------- ##
+# retrieved from: Marbach (2018), Link: https://github.com/sumtxt/wrd
+
+# Load data and prepare variables: 
+# refugees from neighboring country, total N of refugees hosted
+wrd.df <- import("https://raw.githubusercontent.com/sumtxt/wrd/master/usedata/wrd_1.1.0.csv") %>%
+  filter(year == 2015,
+         asylum_ccode != 667) %>% # drop Palestine as host country
+  mutate(state1 = countrycode(sourcevar = asylum_ccode, origin = "cown", destination = "iso3c", custom_match = custom.match),
+         state2 = countrycode(sourcevar = origin_ccode, origin = "cown", destination = "iso3c", custom_match = custom.match)) %>%
+  group_by(state1) %>%
+  mutate(hosted_refugees_agg = sum(ylinpol, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(state1, state2, hosted_refugees = ylinpol, hosted_refugees_agg) 
+
+# Join to border.df
+border.df <- border.df %>%
+  left_join(wrd.df)
+
+# Join aggregated number and refugees from neighbouring country
+
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
 # - Length of shared borders
