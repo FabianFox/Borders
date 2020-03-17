@@ -1,7 +1,8 @@
 # Border Data: Model
 
 # Notes & Issues
-# border.df features the case MMR/PAK, which does not share a common border
+# - border.df features the case MMR/PAK, which does not share a common border
+# - monadic descriptive analysis needs updating
 
                             ###################
                             #      SETUP      #
@@ -158,6 +159,9 @@ border_monvars <- border.df %>%
     state1_military_pers_p1000,
     # culture
     # state1_relig
+    # migration
+    hosted_refugees_agg_pc,
+    hosted_refugees_pc
   ),
                list(~mean(., na.rm = T), 
                     ~sd(., na.rm = T), 
@@ -181,6 +185,8 @@ border_monvars.nest <- border_monvars %>%
   nest() %>%
   ungroup() %>%
   mutate(title = c(
+    "Total number of hosted refugees",
+    "Number of refugees from neigboring country",
     "Victims of terror incidents (2014-2017)",
     "GDP per capita in USD",
     "Military expenditure per one million population",
@@ -188,6 +194,8 @@ border_monvars.nest <- border_monvars %>%
     "Political regime (PolityIV)"
   ),
   subtitle = c(
+    "\nData: World Refugee Dataset (2015)",
+    "\nData: World Refugee Dataset (2015)",
     "\nData: Global Terrorism Database",
     "\nData: WorldBank (2017)",
     "\nData: WorldBank (2017)",
@@ -225,7 +233,6 @@ border.df <- border.df %>%
     absdiff_pol = abs(state1_polity - state2_polity),
     # security
     absdiff_death_toll_3yrs = abs(state1_death_toll_3yrs - state2_death_toll_3yrs),
-    
     # for transformation, see Fox & Weisberg: CAR, p. 131f.
     diff_military_expenditure_pc = state1_military_expenditure_perc_gdp - state2_military_expenditure_perc_gdp,
     logdiff_military_expenditure_pc = log1p(state1_military_expenditure_perc_gdp) - log1p(state2_military_expenditure_perc_gdp),
@@ -328,6 +335,7 @@ iv <- c(
   "state1_death_toll_3yrs",
   "state1_military_expenditure_perc_gdp",
   "state1_military_pers_p1000",
+  state1_
   # (A) Neighbour characteristics (bivariate)
   "state2_gdp", 
   "state2_polity", 
