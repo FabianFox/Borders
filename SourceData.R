@@ -72,7 +72,6 @@ contdird <- contdird %>%
 # GDP p.c. in current US$ - "NY.GDP.PCAP.CD"
 # Total Population - "SP.POP.TOTL"
 # Armed forces personnel, total - MS.MIL.TOTL.P1
-# Military expenditure (current LCU) - MS.MIL.XPND.CN
 # Military expenditure (% of GDP) - MS.MIL.XPND.GD.ZS
 
 # not available via API (yet)
@@ -84,7 +83,7 @@ contdird <- contdird %>%
 # Download data (mrv = newest available; here: 2017)
 wb.info <- wb(country = unique(contdird$state1),
               indicator = c("NY.GDP.PCAP.CD", "SP.POP.TOTL", "MS.MIL.TOTL.P1", 
-                            "MS.MIL.XPND.CN", "MS.MIL.XPND.GD.ZS"), 
+                            "MS.MIL.XPND.GD.ZS"), 
               startdate = 2017, enddate = 2017, return_wide = TRUE)
 
 # (2) Match to base data
@@ -96,8 +95,6 @@ border.df <- contdird %>%
     state2_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD,
     state1_military_pers = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.TOTL.P1,
     state2_military_pers = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.TOTL.P1,
-    state1_military_expenditure_lcu = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CN,
-    state2_military_expenditure_lcu = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CN,
 #    state1_military_expenditure_usd = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
 #    state2_military_expenditure_usd = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
     state1_military_expenditure_perc_gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.GD.ZS,
@@ -105,12 +102,11 @@ border.df <- contdird %>%
     state1_military_pers_pc = state1_military_pers / state1_pop,
     state2_military_pers_pc = state2_military_pers / state2_pop,
     state1_military_pers_p1000 = (state1_military_pers / state1_pop) * 1000,
-    state2_military_pers_p1000 = (state2_military_pers / state2_pop) * 1000,
-    state1_military_expenditure_lcu_pc = state1_military_expenditure_lcu / state1_pop,
-    state2_military_expenditure_lcu_pc = state2_military_expenditure_lcu / state2_pop,
-    state1_military_expenditure_lcu_pmil = (state1_military_expenditure_lcu / state1_pop) * 1000000,
-    state2_military_expenditure_lcu_pmil = (state2_military_expenditure_lcu / state2_pop) * 1000000
-  )
+    state2_military_pers_p1000 = (state2_military_pers / state2_pop) * 1000)
+
+# Create logged versions of the above variables
+border.df <- border.df %>%
+  mutate_at(vars(6:13), list("log" = log1p))
 
 # COW: Trade v4.0
 # Variable: flow1, flow2
@@ -125,7 +121,6 @@ trade.df <- import("C:/Users/guelzauf/Seafile/Meine Bibliothek/Projekte/C01_Gren
          import = na_if(import, -9),
          export = na_if(export, -9))
   
-
 # Make the dataset (long) dyadic
 # (1) Duplicate dataset, swap country identifiers and rename them
 swap.df <- trade.df %>%
@@ -196,10 +191,10 @@ border.df <- border.df %>%
   left_join(y = gtm.df, by = c("state1" = "target_iso3", "state2" = "source_iso3")) %>%
   mutate(trips_outgoing_pc = trips_outgoing / state1_pop,
          trips_incoming_pc = trips_incoming / state2_pop,
-         trips_outgoing_log = log2(trips_outgoing),
-         trips_incoming_log = log2(trips_incoming),
-         trips_outgoing_pc_log = log2(trips_outgoing_pc),
-         trips_incoming_pc_log = log2(trips_incoming_pc))
+         trips_outgoing_log = log1p(trips_outgoing),
+         trips_incoming_log = log1p(trips_incoming),
+         trips_outgoing_pc_log = log1p(trips_outgoing_pc),
+         trips_incoming_pc_log = log1p(trips_incoming_pc))
 
 # Visa Network Data
 ## -------------------------------------------------------------------------- ##
@@ -420,10 +415,10 @@ border.df <- border.df %>%
   mutate(refugees_incoming_pc = refugees_incoming / state1_pop,
          refugees_incoming_agg_pc = refugees_incoming_agg / state1_pop,
          # Log
-         refugees_incoming_log = log2(refugees_incoming),
-         refugees_incoming_agg_log = log2(refugees_incoming_agg),
-         refugees_incoming_pc_log = log2(refugees_incoming_pc),
-         refugees_incoming_agg_pc_log = log2(refugees_incoming_agg_pc))
+         refugees_incoming_log = log1p(refugees_incoming),
+         refugees_incoming_agg_log = log1p(refugees_incoming_agg),
+         refugees_incoming_pc_log = log1p(refugees_incoming_pc),
+         refugees_incoming_agg_pc_log = log1p(refugees_incoming_agg_pc))
          
 # Create column for refugees sent and total number of refugees in neigbouring country
 wrd.df <- wrd.df %>%
