@@ -357,7 +357,7 @@ border.df <- border.df %>%
 
 # Preprocess GTD
 #gtd.df <- import("./data/globalterrorismdb_0919dist.xlsx") %>%
-#   filter(between(iyear, 2014, 2017)) %>%
+#   filter(iyear == 2017) %>%
 #   select(eventid, iyear, imonth, iday, approxdate,   # date of incident
 #          country, country_txt, longitude, latitude,  # location of incident
 #          starts_with("natlty"),                      # nationality of victims
@@ -380,21 +380,21 @@ gtd.agg.df <- gtd.df %>%
             nwound_agg = sum(nwound, na.rm = TRUE)) %>%
   ungroup() %>%
   mutate(cntry_iso3 = countrycode(country_txt, "country.name.en", "iso3c", 
-                                  custom_match = gtd.custom.match)) %>%
-  complete(nesting(country_txt, cntry_iso3), iyear,
-           fill = list(nterror = 0, nkill_agg = 0, nwound_agg = 0)) %>%            
-  group_by(cntry_iso3) %>%  
-  summarise(nterror_3yrs = sum(nterror),
-            death_toll_3yrs = sum(nkill_agg),
-            nwound_3yrs = sum(nwound_agg))
+                                  custom_match = gtd.custom.match)) # %>%
+#  complete(nesting(country_txt, cntry_iso3), iyear,
+#           fill = list(nterror = 0, nkill_agg = 0, nwound_agg = 0)) %>%            
+#  group_by(cntry_iso3) %>%  
+#  summarise(nterror_3yrs = sum(nterror),
+#            death_toll_3yrs = sum(nkill_agg),
+#            nwound_3yrs = sum(nwound_agg))
 
 # Join to border.df
 # Join main religious group to border.df
 border.df <- border.df %>%
-  mutate(state1_nterror_3yrs = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$nterror_3yrs,
-         state2_nterror_3yrs = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$nterror_3yrs,
-         state1_death_toll_3yrs = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$death_toll_3yrs,
-         state2_death_toll_3yrs = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$death_toll_3yrs)
+  mutate(state1_nterror = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$nterror,
+         state2_nterror = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$nterror,
+         state1_death_toll = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$nkill_agg,
+         state2_death_toll = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$nkill_agg)
 
 # World Refugee Dataset
 # Variable:
@@ -410,15 +410,38 @@ wrd.df <- import("https://raw.githubusercontent.com/sumtxt/wrd/master/usedata/wr
   mutate(state1 = countrycode(sourcevar = asylum_ccode, origin = "cown", destination = "iso3c", custom_match = custom.match),
          state2 = countrycode(sourcevar = origin_ccode, origin = "cown", destination = "iso3c", custom_match = custom.match)) %>%
   group_by(state1) %>%
-  mutate(hosted_refugees_agg = sum(ylinpol, na.rm = TRUE)) %>%
+  mutate(refugees_incoming_agg = sum(ylinpol, na.rm = TRUE)) %>%
   ungroup() %>%
-  select(state1, state2, hosted_refugees = ylinpol, hosted_refugees_agg) 
+  select(state1, state2, refugees_incoming = ylinpol, refugees_incoming_agg) 
 
 # Join to border.df and compute refugees hosted per capita
 border.df <- border.df %>%
   left_join(wrd.df) %>%
-  mutate(hosted_refugees_pc = hosted_refugees / state1_pop,
-         hosted_refugees_agg_pc = hosted_refugees_agg / state1_pop)
+  mutate(refugees_incoming_pc = refugees_incoming / state1_pop,
+         refugees_incoming_agg_pc = refugees_incoming_agg / state1_pop,
+         # Log
+         refugees_incoming_log = log2(refugees_incoming),
+         refugees_incoming_agg_log = log2(refugees_incoming_agg),
+         refugees_incoming_pc_log = log2(refugees_incoming_pc),
+         refugees_incoming_agg_pc_log = log2(refugees_incoming_agg_pc))
+         
+# Create column for refugees sent and total number of refugees in neigbouring country
+wrd.df <- wrd.df %>%
+  select(refugees_outgoing = refugees_incoming,
+         refugees_outgoing_agg = refugees_incoming_agg,
+         refugees_outgoing_pc = refugees_incoming_pc,
+         refugees_outgoing_agg_pc = refugees_incoming_agg_pc,
+         # Log
+         refugees_outgoing_log = refugees_incoming_log,
+         refugees_outgoing_agg_log = refugees_incoming_agg_log,
+         refugees_outgoing_pc_log = refugees_incoming_pc_log,
+         refugees_outgoing_agg_pc_log = refugees_incoming_agg_pc_log,
+         state1 = state2,
+         state2 = state1)
+
+# Join
+border.df <- border.df %>%
+  left_join(wrd.df)
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
