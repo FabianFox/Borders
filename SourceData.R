@@ -168,6 +168,35 @@ border.df <- border.df %>%
   mutate(state1_polity = polityIV[match(border.df$state1, polityIV$iso3),]$polity2,
          state2_polity = polityIV[match(border.df$state2, polityIV$iso3),]$polity2)
 
+# Global Transnational Mobility
+# Variable: Estimated trips
+# Year: 2016
+# retrieved from Recchi et al. (2019) "Estimating Transnational Human Mobility 
+#                                      on a Global Scale"
+## -------------------------------------------------------------------------- ##
+# (1) Load and filter to 2016
+gtm.df <- import("./data/Global_Transnational_Mobility_dataset_v1.0.csv") %>%
+  select(3:7) %>%
+  filter(year == 2016) %>%
+  select(-year)
+
+# (2) Join to border.df
+border.df <- border.df %>%
+  left_join(y = gtm.df, by = c("state1" = "source_iso3", "state2" = "target_iso3")) %>%
+  rename(trips_outgoing = estimated_trips, 
+         dist_gtm = dist) 
+
+# (3) Create a column for travels TO state1 FROM state2
+gtm.df <- gtm.df %>%
+  rename(trips_incoming = estimated_trips)
+
+# (4) Join to border.df
+border.df <- border.df %>%
+  select(-dist_gtm) %>%
+  left_join(y = gtm.df, by = c("state1" = "target_iso3", "state2" = "source_iso3")) %>%
+  mutate(trips_outgoing_pc = trips_outgoing / state1_pop,
+         trips_incoming_pc = trips_incoming / state2_pop)
+
 # Visa Network Data
 ## -------------------------------------------------------------------------- ##
 # retrieved from https://www.fiw.uni-bonn.de/demokratieforschung/personen/laube/visanetworkdata
@@ -381,11 +410,11 @@ wrd.df <- import("https://raw.githubusercontent.com/sumtxt/wrd/master/usedata/wr
   ungroup() %>%
   select(state1, state2, hosted_refugees = ylinpol, hosted_refugees_agg) 
 
-# Join to border.df
+# Join to border.df and compute refugees hosted per capita
 border.df <- border.df %>%
-  left_join(wrd.df)
-
-# Join aggregated number and refugees from neighbouring country
+  left_join(wrd.df) %>%
+  mutate(hosted_refugees_pc = hosted_refugees / state1_pop,
+         hosted_refugees_agg_pc = hosted_refugees_agg / state1_pop)
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
