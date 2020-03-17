@@ -195,7 +195,11 @@ border.df <- border.df %>%
   select(-dist_gtm) %>%
   left_join(y = gtm.df, by = c("state1" = "target_iso3", "state2" = "source_iso3")) %>%
   mutate(trips_outgoing_pc = trips_outgoing / state1_pop,
-         trips_incoming_pc = trips_incoming / state2_pop)
+         trips_incoming_pc = trips_incoming / state2_pop,
+         trips_outgoing_log = log2(trips_outgoing),
+         trips_incoming_log = log2(trips_incoming),
+         trips_outgoing_pc_log = log2(trips_outgoing_pc),
+         trips_incoming_pc_log = log2(trips_incoming_pc))
 
 # Visa Network Data
 ## -------------------------------------------------------------------------- ##
