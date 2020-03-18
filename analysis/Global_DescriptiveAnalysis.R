@@ -160,8 +160,8 @@ border_monvars <- border.df %>%
     # culture
     # state1_relig
     # migration
-    hosted_refugees_agg_pc,
-    hosted_refugees_pc
+    refugees_incoming_agg_pc,
+    refugees_incoming_pc
   ),
                list(~mean(., na.rm = T), 
                     ~sd(., na.rm = T), 
@@ -232,7 +232,7 @@ border.df <- border.df %>%
     diff_pol = state1_polity - state2_polity,
     absdiff_pol = abs(state1_polity - state2_polity),
     # security
-    absdiff_death_toll_3yrs = abs(state1_death_toll_3yrs - state2_death_toll_3yrs),
+    absdiff_nkill = abs(state1_death_toll - state2_death_toll),
     # for transformation, see Fox & Weisberg: CAR, p. 131f.
     diff_military_expenditure_pc = state1_military_expenditure_perc_gdp - state2_military_expenditure_perc_gdp,
     logdiff_military_expenditure_pc = log1p(state1_military_expenditure_perc_gdp) - log1p(state2_military_expenditure_perc_gdp),
@@ -330,30 +330,31 @@ dv <- c("state1_typology_landmark_border", "state1_typology_frontier_border",
 # Create model formula
 iv <- c(
   # (A) Builder characteristics (bivariate)
-  "state1_gdp", 
+  "state1_gdp_log", 
   "state1_polity", 
-  "state1_death_toll_3yrs",
-  "state1_military_expenditure_perc_gdp",
-  "state1_military_pers_p1000",
-  state1_
+  "state1_death_toll_log",
+  "state1_military_expenditure_perc_gdp_log",
+  "state1_military_pers_p1000_log",
+  "export_log",
+  "import_log",
   # (A) Neighbour characteristics (bivariate)
-  "state2_gdp", 
+  "state2_gdp_log", 
   "state2_polity", 
-  "state2_death_toll_3yrs",
-  "state2_military_expenditure_perc_gdp",
-  "state2_military_pers_p1000",
+  "state2_death_toll_log",
+  "state2_military_expenditure_perc_gdp_log",
+  "state2_military_pers_p1000_log",
   # (B) Builder characteristics (full)
-  "state1_gdp +
+  "state1_gdp_log +
   state1_polity + 
-  state1_death_toll_3yrs +
-  state1_military_expenditure_perc_gdp +
-  state1_military_pers_p1000",
+  state1_death_toll_log +
+  state1_military_expenditure_perc_gdp_log +
+  state1_military_pers_p1000_log",
   # (B) Neighbour characteristics (full)
-  "state2_gdp +
+  "state2_gdp_log +
   state2_polity + 
-  state2_death_toll_3yrs +
-  state2_military_expenditure_perc_gdp +
-  state2_military_pers_p1000",
+  state2_death_toll_log +
+  state2_military_expenditure_perc_gdp_log +
+  state2_military_pers_p1000_log"
   # (C) Flows
   
   # (D) Dyadic
@@ -386,7 +387,8 @@ result_bivariate.df <- result_bivariate.df %>%
                                           ymin = AME - (SE * qnorm((1-0.95)/2)),
                                           ymax = AME + (SE * qnorm((1-0.95)/2))
                                           )) +
-                        ylim(-0.15, 0.15) +
+                        geom_hline(yintercept = 0, colour = "gray") +
+                        ylim(-0.28, 0.28) +
                         coord_flip() +
                         labs(
                           title = .y,
