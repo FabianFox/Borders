@@ -106,7 +106,7 @@ border.df <- contdird %>%
 
 # Create logged versions of the above variables
 border.df <- border.df %>%
-  mutate_at(vars(6:13), list("log" = log1p))
+  mutate_at(vars(6:17), list("log" = log1p))
 
 # COW: Trade v4.0
 # Variable: flow1, flow2
@@ -136,7 +136,9 @@ trade.df <- trade.df %>%
   bind_rows(., swap.df) %>%
   mutate(dyadName = paste(state1, state2, sep = "_")) %>%
   select(dyadName, state1, state2, export, import) %>%
-  arrange(dyadName)
+  arrange(dyadName) %>%
+  mutate(export_log = log1p(export),
+         import_log = log1p(import))
 
 # (3) Join to border.df
 border.df <- border.df %>%
@@ -375,9 +377,9 @@ gtd.agg.df <- gtd.df %>%
             nwound_agg = sum(nwound, na.rm = TRUE)) %>%
   ungroup() %>%
   mutate(cntry_iso3 = countrycode(country_txt, "country.name.en", "iso3c", 
-                                  custom_match = gtd.custom.match)) # %>%
-#  complete(nesting(country_txt, cntry_iso3), iyear,
-#           fill = list(nterror = 0, nkill_agg = 0, nwound_agg = 0)) %>%            
+                                  custom_match = gtd.custom.match)) %>%
+  complete(nesting(country_txt, cntry_iso3), iyear,
+           fill = list(nterror = 0, nkill_agg = 0, nwound_agg = 0)) # %>%            
 #  group_by(cntry_iso3) %>%  
 #  summarise(nterror_3yrs = sum(nterror),
 #            death_toll_3yrs = sum(nkill_agg),
@@ -389,7 +391,11 @@ border.df <- border.df %>%
   mutate(state1_nterror = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$nterror,
          state2_nterror = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$nterror,
          state1_death_toll = gtd.agg.df[match(border.df$state1, gtd.agg.df$cntry_iso3),]$nkill_agg,
-         state2_death_toll = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$nkill_agg)
+         state2_death_toll = gtd.agg.df[match(border.df$state2, gtd.agg.df$cntry_iso3),]$nkill_agg,
+         state1_nterror_log = log1p(state1_nterror),
+         state2_nterror_log = log1p(state2_nterror),
+         state1_death_toll_log = log1p(state1_death_toll),
+         state2_death_toll_log = log1p(state2_death_toll))
 
 # World Refugee Dataset
 # Variable:
