@@ -423,21 +423,21 @@ border.df <- border.df %>%
 # Create column for refugees sent and total number of refugees in neigbouring country
 wrd.df <- wrd.df %>%
   select(refugees_outgoing = refugees_incoming,
-         refugees_outgoing_agg = refugees_incoming_agg,
-         refugees_outgoing_pc = refugees_incoming_pc,
-         refugees_outgoing_agg_pc = refugees_incoming_agg_pc,
-         # Log
-         refugees_outgoing_log = refugees_incoming_log,
-         refugees_outgoing_agg_log = refugees_incoming_agg_log,
-         refugees_outgoing_pc_log = refugees_incoming_pc_log,
-         refugees_outgoing_agg_pc_log = refugees_incoming_agg_pc_log,
+         refugees_outgoing_agg = refugees_incoming_agg, 
          state1 = state2,
          state2 = state1)
 
 # Join
 border.df <- border.df %>%
-  left_join(wrd.df)
-
+  left_join(wrd.df) %>%
+  mutate(refugees_outgoing_pc = refugees_outgoing / state2_pop,
+         refugees_outgoing_agg_pc = refugees_outgoing_agg / state2_pop,
+         # Log
+         refugees_outgoing_log = log1p(refugees_outgoing),
+         refugees_outgoing_agg_log = log1p(refugees_outgoing_agg),
+         refugees_outgoing_pc_log = log1p(refugees_outgoing_pc),
+         refugees_outgoing_agg_pc_log = log1p(refugees_outgoing_agg_pc))
+         
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
 # - Length of shared borders
