@@ -13,23 +13,6 @@
 if (!require("pacman")) install.packages("pacman")
 p_load(tidyverse, janitor, broom, margins, patchwork)
 
-# (1) Indicator factor levels
-fac_ind_en <- function(x) {
-  factor(x, levels = c("landmark border", "frontier border", "checkpoint border", 
-                       "barrier border", "fortified border"),
-         labels = c("Landmark", "Frontier", "Checkpoint", 
-                    "Barrier", "Fortified"))
-}
-
-# (2) Theme for the plots
-theme.basic <- theme_minimal() +
-  theme(
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(size = 14),
-    axis.ticks.x = element_line(size = .5),
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
 
                             ###################
                             #      DATA       #
@@ -99,6 +82,37 @@ border.df <- border.df %>%
   left_join(swap.df) %>%
   rename(state1_typology = typology)
 
+# Define factor variables and style scheme
+## -------------------------------------------------------------------------- ##
+# (1) Indicator factor levels
+fac_ind_en <- function(x) {
+  factor(x, levels = c("frontier border", "landmark border", "checkpoint border", 
+                       "barrier border", "fortified border"),
+         labels = c("'No man's land'","Landmark", "Checkpoint", 
+                    "Barrier", "Fortified"))
+}
+
+# (2) Factor levels for DV
+fac_ind_dv <- function(x) {
+  factor(x, levels = c("state1_typology_frontier_border", 
+                       "state1_typology_landmark_border",
+                       "state1_typology_checkpoint_border",
+                       "state1_typology_barrier_border",   
+                       "state1_typology_fortified_border"),
+         labels = c("'No man's land'", "Landmark", "Checkpoint", 
+                    "Barrier", "Fortified"))
+}
+
+# (3) Theme for the plots
+theme.basic <- theme_minimal() +
+  theme(
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    text = element_text(size = 14),
+    axis.ticks.x = element_line(size = .5),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
                             ###################
                             #       EDA       #
                             ###################
@@ -149,19 +163,21 @@ ind.perc.region.fig <- border.df %>%
 border_monvars <- border.df %>%
   group_by(state1_typology) %>%
   summarise_at(vars(
+    # control
+    state1_pop,
     # economy
     state1_gdp,
     # politics
     state1_polity,
     # security
-    state1_death_toll_3yrs,
-    state1_military_expenditure_lcu_pc,
+    state1_death_toll,
+    state1_military_expenditure_perc_gdp,
     state1_military_pers_p1000,
     # culture
     # state1_relig
     # migration
-    refugees_incoming_agg_pc,
-    refugees_incoming_pc
+    # refugees_incoming_agg_pc,
+    # refugees_incoming_pc
   ),
                list(~mean(., na.rm = T), 
                     ~sd(., na.rm = T), 
@@ -185,22 +201,20 @@ border_monvars.nest <- border_monvars %>%
   nest() %>%
   ungroup() %>%
   mutate(title = c(
-    "Total number of hosted refugees",
-    "Number of refugees from neigboring country",
-    "Victims of terror incidents (2014-2017)",
-    "GDP per capita in USD",
-    "Military expenditure per one million population",
-    "Military personnel per 1.000 population",
-    "Political regime (PolityIV)"
+    "Annual victims of terror incidents",
+    "GDP per capita (in USD)",
+    "Military expenditure (as % of GDP)",
+    "Military personnel (per 1.000 population)",
+    "Political regime (PolityIV)",
+    "Population size"
   ),
   subtitle = c(
-    "\nData: World Refugee Dataset (2015)",
-    "\nData: World Refugee Dataset (2015)",
     "\nData: Global Terrorism Database",
     "\nData: WorldBank (2017)",
     "\nData: WorldBank (2017)",
     "\nData: WorldBank (2017)",
-    "\nData: PolityIV (2017)"
+    "\nData: PolityIV (2017)",
+    "\nData: WorldBank (2017)"
   ))
 
 # Plot
@@ -211,8 +225,10 @@ border_monvars.fig <- border_monvars.nest %>%
                           title = ..2,
                           caption = ..3,
                           x = "", y = "") +
-                        theme_minimal()
+                        theme.basic
   ))
+
+border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots)
 
 # Dyadic 
 ### ------------------------------------------------------------------------ ###
@@ -223,11 +239,12 @@ border.df <- border.df %>%
   mutate(
     # economy
     diff_gdp = state1_gdp - state2_gdp,
-    logdiff_gdp = log(state1_gdp) - log(state2_gdp),
+    logdiff_gdp = state1_gdp_log - state2_gdp_log,
     absdiff_gdp = abs(state1_gdp - state2_gdp),
     ratio_gdp = state1_gdp / state2_gdp,
+    
     # trade
-    log_diff_trade = log1p(export) - log1p(import),
+    log_diff_trade = export_log - import_log,
     # politics
     diff_pol = state1_polity - state2_polity,
     absdiff_pol = abs(state1_polity - state2_polity),
@@ -235,11 +252,11 @@ border.df <- border.df %>%
     absdiff_nkill = abs(state1_death_toll - state2_death_toll),
     # for transformation, see Fox & Weisberg: CAR, p. 131f.
     diff_military_expenditure_pc = state1_military_expenditure_perc_gdp - state2_military_expenditure_perc_gdp,
-    logdiff_military_expenditure_pc = log1p(state1_military_expenditure_perc_gdp) - log1p(state2_military_expenditure_perc_gdp),
+    logdiff_military_expenditure_pc = state1_military_expenditure_perc_gdp_log - state2_military_expenditure_perc_gdp_log,
     absdiff_military_expenditure_pc = state1_military_expenditure_perc_gdp - state2_military_expenditure_perc_gdp,
     
     diff_military_pers_pc = state1_military_pers_pc - state2_military_pers_pc,
-    logdiff_military_pers_pc = log1p(state1_military_pers_pc) - log1p(state2_military_pers_pc),
+    logdiff_military_pers_pc = state1_military_pers_pc_log - state2_military_pers_pc_log,
     absdiff_military_pers_pc = abs(state1_military_pers_pc - state2_military_pers_pc))
 
 # Summarise by group
@@ -305,7 +322,7 @@ border_dyadvars.fig <- border_dyadvars.nest %>%
 
 # Approach
 # Bivariate
-# (A) Builder characteristics & neigbour characteristics
+# (A) (1) Builder characteristics &  (2) neigbour characteristics
 # Multivariate
 # (B) Full model (of A)
 # (C) Flows
@@ -322,27 +339,27 @@ border.df <- border.df %>%
   bind_cols(border.df) %>%
   rename_at(vars(contains("state1_typology_")), list(~make_clean_names(.)))
 
-dv <- c("state1_typology_landmark_border", "state1_typology_frontier_border", 
+dv <- c("state1_typology_frontier_border", "state1_typology_landmark_border", 
         "state1_typology_checkpoint_border", "state1_typology_barrier_border", 
         "state1_typology_fortified_border")
 
 # Models
 # Create model formula
 iv <- c(
-  # (A) Builder characteristics (bivariate)
+  # (A1) Builder characteristics (bivariate)
   "state1_gdp_log", 
   "state1_polity", 
   "state1_death_toll_log",
   "state1_military_expenditure_perc_gdp_log",
   "state1_military_pers_p1000_log",
-  "export_log",
-  "import_log",
-  # (A) Neighbour characteristics (bivariate)
+  "state1_pop_log",
+  # (A2) Neighbour characteristics (bivariate)
   "state2_gdp_log", 
   "state2_polity", 
   "state2_death_toll_log",
   "state2_military_expenditure_perc_gdp_log",
   "state2_military_pers_p1000_log",
+  "state2_pop_log",
   # (B) Builder characteristics (full)
   "state1_gdp_log +
   state1_polity + 
@@ -356,10 +373,16 @@ iv <- c(
   state2_military_expenditure_perc_gdp_log +
   state2_military_pers_p1000_log"
   # (C) Flows
-  
+#  "export_log",
+#  "import_log",
+#  "trips_outgoing_pc_log",
+#  "trips_incoming_pc_log",
+#  "refugees_outgoing_pc_log",
+#  "refugees_incoming_pc_log",
   # (D) Dyadic
   )
 
+# Create model dataframe
 model <- expand_grid(iv, dv) %>%
   mutate(formula = paste0(dv, " ~ ", iv))
 
@@ -371,17 +394,18 @@ result.df <- model %>%
                        margins(.) %>%
                        summary(.)))
 
-# Nest results for (A 'bivariate') by DV
+# Results: Model A1 'builder effects'
 ### ------------------------------------------------------------------------ ###
-result_bivariate.df <- result.df %>%
-  filter(str_detect(iv, "[+]") != TRUE) %>%
+
+result_bivariate_A1.df <- result.df %>%
+  filter(str_detect(iv, "state1_") & !(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
   group_by(dv) %>%
   nest()
 
 # Create coefplots
-result_bivariate.df <- result_bivariate.df %>%
-  mutate(plots = map2(.x = data, .y = dv, ~ggplot(data = .x) +
+result_bivariate_A1.df <- result_bivariate_A1.df %>%
+  mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
                         geom_point(aes(x = factor, y = AME), stat = "identity") +
                         geom_errorbar(aes(x = factor, 
                                           ymin = AME - (SE * qnorm((1-0.95)/2)),
@@ -397,27 +421,27 @@ result_bivariate.df <- result_bivariate.df %>%
   ))
 
 # Display all coefplots
-wrap_plots(result_bivariate.df$plots)
+wrap_plots(result_bivariate_A1.df$plots)
 
-# Nest results for (B 'full model') by DV
+# Results: Model A2 'nieghbour effects'
 ### ------------------------------------------------------------------------ ###
-result_multivariate.df <- result.df %>%
-  filter(str_detect(iv, "[+]") == TRUE) %>%
+
+result_bivariate_A2.df <- result.df %>%
+  filter(str_detect(iv, "state2_") & !(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
   group_by(dv) %>%
   nest()
 
 # Create coefplots
-result_multivariate.df <- result_multivariate.df %>%
-  mutate(data = map(data, ~ .x %>%
-                      filter(str_detect(iv, "2") != TRUE))) %>%
-  mutate(plots = map2(.x = data, .y = dv, ~ggplot(data = .x) +
+result_bivariate_A2.df <- result_bivariate_A2.df %>%
+  mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
                         geom_point(aes(x = factor, y = AME), stat = "identity") +
                         geom_errorbar(aes(x = factor, 
                                           ymin = AME - (SE * qnorm((1-0.95)/2)),
                                           ymax = AME + (SE * qnorm((1-0.95)/2))
                         )) +
-                        ylim(-0.09, 0.09) +
+                        geom_hline(yintercept = 0, colour = "gray") +
+                        ylim(-0.28, 0.28) +
                         coord_flip() +
                         labs(
                           title = .y,
@@ -426,7 +450,36 @@ result_multivariate.df <- result_multivariate.df %>%
   ))
 
 # Display all coefplots
-wrap_plots(result_multivariate.df$plots)
+wrap_plots(result_bivariate_A2.df$plots)
+
+# Nest results for (B 'full model') by DV
+### ------------------------------------------------------------------------ ###
+result_multivariate_B.df <- result.df %>%
+  filter(str_detect(iv, "[+]") == TRUE) %>%
+  unnest(model) %>%
+  group_by(dv) %>%
+  nest()
+
+# Create coefplots
+result_multivariate_B.df <- result_multivariate_B.df %>%
+  mutate(data = map(data, ~ .x %>%
+                      filter(str_detect(iv, "2") != TRUE))) %>%
+  mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
+                        geom_point(aes(x = factor, y = AME), stat = "identity") +
+                        geom_errorbar(aes(x = factor, 
+                                          ymin = AME - (SE * qnorm((1-0.95)/2)),
+                                          ymax = AME + (SE * qnorm((1-0.95)/2))
+                        )) +
+                        ylim(-0.3, 0.3) +
+                        coord_flip() +
+                        labs(
+                          title = .y,
+                          x = "", y = "") +
+                        theme_minimal()
+  ))
+
+# Display all coefplots
+wrap_plots(result_multivariate_B.df$plots)
 
 # Nest results for (C 'flows') by DV
 ### ------------------------------------------------------------------------ ###
@@ -466,7 +519,7 @@ result_dyadic.df <- result_dyadic.df %>%
 
 # Create coefplots
 result_dyadic.df <- result_dyadic.df %>%
-  mutate(plots = map2(.x = data, .y = dv, ~ggplot(data = .x) +
+  mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
                         geom_point(aes(x = factor, y = AME), stat = "identity") +
                         geom_errorbar(aes(x = factor, 
                                           ymin = AME - (SE * qnorm((1-0.95)/2)),
@@ -491,5 +544,12 @@ wrap_plots(result_dyadic.df$plots)
 # Relative distribution of border infrastructure
 ggsave(
   plot = ind.perc.region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", width = 8, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Appendix
+# Independent variables
+ggsave(
+  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/FigA1 - Independent Variables.tiff", width = 12, height = 8, unit = "in",
   dpi = 300
 )
