@@ -5,6 +5,7 @@
 
 # Notes & Issues
 # - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
+# - French Guyana
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
