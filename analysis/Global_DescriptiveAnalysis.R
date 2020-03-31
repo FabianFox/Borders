@@ -3,6 +3,8 @@
 # Notes & Issues
 # - border.df features the case MMR/PAK, which does not share a common border
 # - monadic descriptive analysis needs updating
+# - FRA-GUY must be added
+# - missing values in border_monvars
 
                             ###################
                             #      SETUP      #
@@ -126,6 +128,14 @@ ind.perc.df <- border.df %>%
   mutate(perc = count / sum(count) * 100,
          continent1 = "World")
 
+# Round global distribution
+border.df %>%
+  group_by(state1_typology) %>%
+  summarise(count = n()) %>%
+  mutate(group_n = sum(count),
+         perc = count / group_n * 100, continent1 = "World") %>%
+  mutate(rounded_perc = round(perc, digit = 1))
+
 # Only the global distribution
 ind.perc.fig <- ind.perc.df %>%
   ggplot(mapping = aes(x = state1_typology, y = perc)) +
@@ -152,6 +162,23 @@ ind.perc.region.fig <- border.df %>%
   theme.basic +
   scale_y_continuous(labels = function(x) paste0(x, "%"))
 
+# Round global distribution (regions)
+global_dist.df <- border.df %>%
+  group_by(continent1, state1_typology) %>%
+  summarise(count = n()) %>%
+  mutate(group_n = sum(count),
+         perc = count / group_n * 100) %>%
+  mutate(rounded_perc = round(perc, digit = 1)) %>%
+  select(continent1, state1_typology, rounded_perc) %>%
+  pivot_wider(names_from = continent1, values_from = rounded_perc) %>%
+  arrange(fac_ind_en(state1_typology))
+
+# Barriers and fortified borders most common in Asia 
+#global_dist.df %>%
+#  select(state1_typology, Asia) %>%
+#  filter(state1_typology %in% c("barrier border", "fortified border")) %>%
+#  summarise(colsum = colSums(.[,2]))
+
 # Monadic
 ### ------------------------------------------------------------------------ ###
 
@@ -161,10 +188,11 @@ ind.perc.region.fig <- border.df %>%
 # --------------------------------- #
 # Summary stats
 border_monvars <- border.df %>%
+  mutate(state1_pop_per_million = state1_pop / 1000000) %>%
   group_by(state1_typology) %>%
   summarise_at(vars(
     # control
-    state1_pop,
+    state1_pop_per_million,
     # economy
     state1_gdp,
     # politics
@@ -206,10 +234,10 @@ border_monvars.nest <- border_monvars %>%
     "Military expenditure (as % of GDP)",
     "Military personnel (per 1.000 population)",
     "Political regime (PolityIV)",
-    "Population size"
+    "Population size (in million)"
   ),
   subtitle = c(
-    "\nData: Global Terrorism Database",
+    "\nData: Global Terrorism Database (2017)",
     "\nData: WorldBank (2017)",
     "\nData: WorldBank (2017)",
     "\nData: WorldBank (2017)",
@@ -220,14 +248,19 @@ border_monvars.nest <- border_monvars %>%
 # Plot
 border_monvars.fig <- border_monvars.nest %>%
   mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
-                        geom_bar(aes(x = fac_ind_en(state1_typology), y = mean), stat = "identity") +
+                        geom_bar(aes(x = fac_ind_en(state1_typology), y = mean),
+                                 stat = "identity") +
                         labs(
                           title = ..2,
                           caption = ..3,
                           x = "", y = "") +
-                        theme.basic
-  ))
+                        theme.basic +
+                        theme(
+                          plot.title = element_text(size = 9, face = "bold"),
+                          plot.caption = element_text(size = 7))
+                      ))
 
+# Put figures together with patchwork
 border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots)
 
 # Dyadic 
@@ -310,7 +343,7 @@ border_dyadvars.fig <- border_dyadvars.nest %>%
                           title = ..2,
                           caption = ..3,
                           x = "", y = "") +
-                        theme_minimal()
+                        theme_basic
   ))
 
                           ##########################
@@ -365,13 +398,15 @@ iv <- c(
   state1_polity + 
   state1_death_toll_log +
   state1_military_expenditure_perc_gdp_log +
-  state1_military_pers_p1000_log",
+  state1_military_pers_p1000_log + 
+  state1_pop_log",
   # (B) Neighbour characteristics (full)
   "state2_gdp_log +
   state2_polity + 
   state2_death_toll_log +
   state2_military_expenditure_perc_gdp_log +
-  state2_military_pers_p1000_log"
+  state2_military_pers_p1000_log + 
+  state2_pop_log"
   # (C) Flows
 #  "export_log",
 #  "import_log",
@@ -387,16 +422,32 @@ model <- expand_grid(iv, dv) %>%
   mutate(formula = paste0(dv, " ~ ", iv))
 
 # Apply the glm-formula
-result.df <- model %>%
+result_glm.df <- model %>%
   mutate(model = map(formula, ~glm(as.formula(.), 
                                    family = binomial(link = "logit"), 
-                                   data = border.df) %>%
-                       margins(.) %>%
-                       summary(.)))
+                                   data = border.df)))
 
+# Compute AME (infinitesimal small change)                    
+result_ame.df <- result_glm.df %>%
+  mutate(model = map(model, 
+                     ~margins(.) %>%
+                       summary(.))) %>%
+  # Add p*-stars
+  mutate(model = map(model, ~mutate(., 
+                                    pstars = stars.pval(p))))
+
+# AME of +/- 1 SD                     
+result_sd.df <- result_glm.df %>%
+  mutate(model = map(model, 
+                     ~margins(., change = "sd") %>%
+                       summary(.))) %>%
+  # Add p*-stars
+  mutate(model = map(model, ~mutate(., 
+                                    pstars = stars.pval(p))))
+         
 # Results: Model A1 'builder effects'
 ### ------------------------------------------------------------------------ ###
-
+# Filter to model A1
 result_bivariate_A1.df <- result.df %>%
   filter(str_detect(iv, "state1_") & !(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
@@ -411,8 +462,8 @@ result_bivariate_A1.df <- result_bivariate_A1.df %>%
                                           ymin = AME - (SE * qnorm((1-0.95)/2)),
                                           ymax = AME + (SE * qnorm((1-0.95)/2))
                                           )) +
-                        geom_hline(yintercept = 0, colour = "gray") +
-                        ylim(-0.28, 0.28) +
+                        geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
+                        ylim(-0.27, 0.27) +
                         coord_flip() +
                         labs(
                           title = .y,
@@ -421,9 +472,9 @@ result_bivariate_A1.df <- result_bivariate_A1.df %>%
   ))
 
 # Display all coefplots
-wrap_plots(result_bivariate_A1.df$plots)
+bivariate_A1.fig <- wrap_plots(result_bivariate_A1.df$plots)
 
-# Results: Model A2 'nieghbour effects'
+# Results: Model A2 'neighbour effects'
 ### ------------------------------------------------------------------------ ###
 
 result_bivariate_A2.df <- result.df %>%
@@ -470,6 +521,7 @@ result_multivariate_B.df <- result_multivariate_B.df %>%
                                           ymin = AME - (SE * qnorm((1-0.95)/2)),
                                           ymax = AME + (SE * qnorm((1-0.95)/2))
                         )) +
+                        geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
                         ylim(-0.3, 0.3) +
                         coord_flip() +
                         labs(
@@ -479,7 +531,7 @@ result_multivariate_B.df <- result_multivariate_B.df %>%
   ))
 
 # Display all coefplots
-wrap_plots(result_multivariate_B.df$plots)
+multivariate_B.fig <- wrap_plots(result_multivariate_B.df$plots)
 
 # Nest results for (C 'flows') by DV
 ### ------------------------------------------------------------------------ ###
@@ -540,16 +592,38 @@ wrap_plots(result_dyadic.df$plots)
                           #       EXPORT FIGS      #
                           ##########################
 
-# Figure 1
+# Figure 2
 # Relative distribution of border infrastructure
 ggsave(
   plot = ind.perc.region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", width = 8, height = 6, unit = "in",
   dpi = 300
 )
 
+# Figure 3
+# Bivariate relationship
+ggsave(
+  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", width = 9, height = 6, unit = "in",
+  dpi = 300
+)
+
+# Figure 4
+# Logististic regression: B
+ggsave(
+  plot = multivariate_B.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Logistic Regression B.tiff", width = 14, height = 8, unit = "in",
+  dpi = 300
+)
+
 # Appendix
+# Figure A1
 # Independent variables
 ggsave(
-  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/FigA1 - Independent Variables.tiff", width = 12, height = 8, unit = "in",
+  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/FigA1 - Independent Variables.tiff", width = 14, height = 8, unit = "in",
+  dpi = 300
+)
+
+# Figure A2
+# Logististic regression: A1
+ggsave(
+  plot = bivariate_A1.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/A2 - Logistic Regression A1.tiff", width = 14, height = 8, unit = "in",
   dpi = 300
 )
