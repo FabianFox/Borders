@@ -13,7 +13,7 @@
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, janitor, broom, margins, patchwork)
+p_load(tidyverse, janitor, broom, margins, patchwork, gtools)
 
 
                             ###################
@@ -436,7 +436,7 @@ result_ame.df <- result_glm.df %>%
   mutate(model = map(model, ~mutate(., 
                                     pstars = stars.pval(p))))
 
-# AME of +/- 1 SD                     
+# AME of mean -/+ 1 SD                     
 result_sd.df <- result_glm.df %>%
   mutate(model = map(model, 
                      ~margins(., change = "sd") %>%
@@ -448,7 +448,7 @@ result_sd.df <- result_glm.df %>%
 # Results: Model A1 'builder effects'
 ### ------------------------------------------------------------------------ ###
 # Filter to model A1
-result_bivariate_A1.df <- result.df %>%
+result_bivariate_A1.df <- result_ame.df %>%
   filter(str_detect(iv, "state1_") & !(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
   group_by(dv) %>%
@@ -477,7 +477,7 @@ bivariate_A1.fig <- wrap_plots(result_bivariate_A1.df$plots)
 # Results: Model A2 'neighbour effects'
 ### ------------------------------------------------------------------------ ###
 
-result_bivariate_A2.df <- result.df %>%
+result_bivariate_A2.df <- result_ame.df %>%
   filter(str_detect(iv, "state2_") & !(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
   group_by(dv) %>%
@@ -505,7 +505,7 @@ wrap_plots(result_bivariate_A2.df$plots)
 
 # Nest results for (B 'full model') by DV
 ### ------------------------------------------------------------------------ ###
-result_multivariate_B.df <- result.df %>%
+result_multivariate_B.df <- result_ame.df %>%
   filter(str_detect(iv, "[+]") == TRUE) %>%
   unnest(model) %>%
   group_by(dv) %>%
