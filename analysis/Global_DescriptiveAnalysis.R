@@ -4,7 +4,7 @@
 # - border.df features the case MMR/PAK, which does not share a common border
 # - monadic descriptive analysis needs updating
 # - FRA-GUY must be added
-# - missing values in border_monvars
+# - missing values: Amelia MI
 
                             ###################
                             #      SETUP      #
@@ -13,7 +13,7 @@
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, janitor, broom, margins, patchwork, gtools)
+p_load(tidyverse, janitor, broom, margins, patchwork, gtools, nnet, Amelia, ggeffects)
 
 
                             ###################
@@ -276,11 +276,17 @@ border.df <- border.df %>%
     absdiff_gdp = abs(state1_gdp - state2_gdp),
     ratio_gdp = state1_gdp / state2_gdp,
     
-    # trade
+      # trade
     log_diff_trade = export_log - import_log,
+    
     # politics
     diff_pol = state1_polity - state2_polity,
     absdiff_pol = abs(state1_polity - state2_polity),
+    
+      # refugee flows
+    diff_refugees = refugees_outgoing - refugees_incoming,
+    logdiff_refugees = refugees_outgoing_log - refugees_incoming_log,
+    
     # security
     absdiff_nkill = abs(state1_death_toll - state2_death_toll),
     # for transformation, see Fox & Weisberg: CAR, p. 131f.
@@ -357,14 +363,14 @@ border_dyadvars.fig <- border_dyadvars.nest %>%
 # Bivariate
 # (A) (1) Builder characteristics &  (2) neigbour characteristics
 # Multivariate
-# (B) Full model (of A)
+# (B) Full model
 # (C) Flows
 # (D) Combined effects (dyadic effects)
 # (E) Combination of border typology, i.e. fortified_fortified...
 
 # Note:
-# Keep the dataframe after sjmisc::to_dummy and create a formula for each DV and all IV
-# then map_df
+# Fitted probabilities between 0 and 1 occurred: 
+# - Landmark ~ Polity (https://stats.stackexchange.com/questions/336424/issue-with-complete-separation-in-logistic-regression-in-r)
 
 # Create dummy variables of typology
 border.df <- border.df %>%
@@ -380,41 +386,27 @@ dv <- c("state1_typology_frontier_border", "state1_typology_landmark_border",
 # Create model formula
 iv <- c(
   # (A1) Builder characteristics (bivariate)
-  "state1_gdp_log", 
-  "state1_polity", 
-  "state1_death_toll_log",
+  "state1_gdp_log",
+  "share_export",
+  "share_import",
+  "state1_polity",
+  "refugees_incoming_log",
+  "disp_from_2000_to_2010",
+  "state1_nterror_log",
+  "diff_relig",
   "state1_military_expenditure_perc_gdp_log",
-  "state1_military_pers_p1000_log",
-  "state1_pop_log",
   # (A2) Neighbour characteristics (bivariate)
-  "state2_gdp_log", 
-  "state2_polity", 
-  "state2_death_toll_log",
-  "state2_military_expenditure_perc_gdp_log",
-  "state2_military_pers_p1000_log",
-  "state2_pop_log",
-  # (B) Builder characteristics (full)
+
+  # (B) Full model
   "state1_gdp_log +
-  state1_polity + 
-  state1_death_toll_log +
-  state1_military_expenditure_perc_gdp_log +
-  state1_military_pers_p1000_log + 
-  state1_pop_log",
-  # (B) Neighbour characteristics (full)
-  "state2_gdp_log +
-  state2_polity + 
-  state2_death_toll_log +
-  state2_military_expenditure_perc_gdp_log +
-  state2_military_pers_p1000_log + 
-  state2_pop_log"
-  # (C) Flows
-#  "export_log",
-#  "import_log",
-#  "trips_outgoing_pc_log",
-#  "trips_incoming_pc_log",
-#  "refugees_outgoing_pc_log",
-#  "refugees_incoming_pc_log",
-  # (D) Dyadic
+  share_export +
+  share_import +
+  state1_polity +
+  refugees_incoming_log +
+  disp_from_2000_to_2010 +
+  state1_nterror_log +
+  diff_relig +
+  state1_military_expenditure_perc_gdp_log"
   )
 
 # Create model dataframe
@@ -449,7 +441,7 @@ result_sd.df <- result_glm.df %>%
 ### ------------------------------------------------------------------------ ###
 # Filter to model A1
 result_bivariate_A1.df <- result_ame.df %>%
-  filter(str_detect(iv, "state1_") & !(str_detect(iv, "[+]"))) %>%
+  filter(!(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
   group_by(dv) %>%
   nest()
@@ -463,7 +455,7 @@ result_bivariate_A1.df <- result_bivariate_A1.df %>%
                                           ymax = AME + (SE * qnorm((1-0.95)/2))
                                           )) +
                         geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
-                        ylim(-0.27, 0.27) +
+                        ylim(-2, 2) +
                         coord_flip() +
                         labs(
                           title = .y,
@@ -477,44 +469,19 @@ bivariate_A1.fig <- wrap_plots(result_bivariate_A1.df$plots)
 # Results: Model A2 'neighbour effects'
 ### ------------------------------------------------------------------------ ###
 
-result_bivariate_A2.df <- result_ame.df %>%
-  filter(str_detect(iv, "state2_") & !(str_detect(iv, "[+]"))) %>%
-  unnest(model) %>%
-  group_by(dv) %>%
-  nest()
+# /
 
-# Create coefplots
-result_bivariate_A2.df <- result_bivariate_A2.df %>%
-  mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
-                        geom_point(aes(x = factor, y = AME), stat = "identity") +
-                        geom_errorbar(aes(x = factor, 
-                                          ymin = AME - (SE * qnorm((1-0.95)/2)),
-                                          ymax = AME + (SE * qnorm((1-0.95)/2))
-                        )) +
-                        geom_hline(yintercept = 0, colour = "gray") +
-                        ylim(-0.28, 0.28) +
-                        coord_flip() +
-                        labs(
-                          title = .y,
-                          x = "", y = "") +
-                        theme_minimal()
-  ))
-
-# Display all coefplots
-wrap_plots(result_bivariate_A2.df$plots)
-
-# Nest results for (B 'full model') by DV
+# Results B: Full model
 ### ------------------------------------------------------------------------ ###
-result_multivariate_B.df <- result_ame.df %>%
-  filter(str_detect(iv, "[+]") == TRUE) %>%
+# Filter to model A1
+result_B.df <- result_ame.df %>%
+  filter(str_detect(iv, "[+]")) %>%
   unnest(model) %>%
   group_by(dv) %>%
   nest()
 
 # Create coefplots
-result_multivariate_B.df <- result_multivariate_B.df %>%
-  mutate(data = map(data, ~ .x %>%
-                      filter(str_detect(iv, "2") != TRUE))) %>%
+result_B.df <- result_B.df %>%
   mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
                         geom_point(aes(x = factor, y = AME), stat = "identity") +
                         geom_errorbar(aes(x = factor, 
@@ -522,7 +489,7 @@ result_multivariate_B.df <- result_multivariate_B.df %>%
                                           ymax = AME + (SE * qnorm((1-0.95)/2))
                         )) +
                         geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
-                        ylim(-0.3, 0.3) +
+                        ylim(-.5, .5) +
                         coord_flip() +
                         labs(
                           title = .y,
@@ -531,62 +498,80 @@ result_multivariate_B.df <- result_multivariate_B.df %>%
   ))
 
 # Display all coefplots
-multivariate_B.fig <- wrap_plots(result_multivariate_B.df$plots)
+multivariate_B.fig <- wrap_plots(result_B.df$plots)
 
-# Nest results for (C 'flows') by DV
+
+# Multinomial logistic regression
 ### ------------------------------------------------------------------------ ###
+# nnet::multinom 
+border.df <- border.df %>%
+  mutate(state1_typology_fct = fac_ind_en(state1_typology),
+         state1_typology_fct = fct_relevel(state1_typology_fct, "Checkpoint"))
 
+# Apply multinom
+model_mnom.df <- multinom(
+  as.formula(paste0("state1_typology_fct", " ~ ", iv[10])), 
+  data = border.df)
 
-# Nest results for (D 'dyadic effects') by DV
+# Tidy
+result_mnom.df <- model_mnom.df %>%
+  tidy(., conf.int = TRUE, conf.level = 0.95, exponentiate = FALSE) %>%
+  mutate(pstars = stars.pval(p.value),
+         y.level = factor(y.level, 
+                       levels = c("'No man's land'", "Landmark", "Checkpoint", 
+                                  "Barrier", "Fortified"))) %>%
+  filter(term != "(Intercept)")
+
+# Plot
+ggplot(data = result_mnom.df) +
+  geom_point(aes(x = term, y = estimate), stat = "identity") +
+  geom_errorbar(aes(x = term, 
+                    ymin = conf.low,
+                    ymax = conf.high)) +
+  geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
+  facet_wrap(~y.level) +
+  ylim(-7.5, 7.5) +
+  coord_flip() +
+  labs(
+    title = "",
+    x = "", y = "") +
+  theme_minimal()
+
+# ggeffects (see: https://strengejacke.github.io/ggeffects/))
+result.mnom.gg <- ggeffect(model_mnom.df)
+
+# mlogit
 ### ------------------------------------------------------------------------ ###
+# Transform to factor
+border.df <- border.df %>%
+  mutate(state1_typology_fct = fac_ind_en(state1_typology),
+         state1_typology_fct = fct_relevel(state1_typology_fct, "Checkpoint"))
 
-# Remove NA/NaN/Inf
-border_clean.df <- border.df %>%
-  select(state1, state2,
-         contains("state1_typology_"),
-         logdiff_gdp, log_diff_trade,  diff_pol,
-         logdiff_military_expenditure_pc, 
-         logdiff_military_pers_pc) %>%
-  filter_all(all_vars(!is.na(.)))
+# Retain only model vars
+border.mlogit <- border.df %>%
+  select(state1_typology_fct, state1_gdp_log, share_export, share_import, state1_polity, 
+         refugees_incoming_log, disp_from_2000_to_2010, state1_nterror_log,
+         diff_relig, state1_military_expenditure_perc_gdp_log, state1, state1)
 
-iv <- c("logdiff_gdp + log_diff_trade +  diff_pol + 
-logdiff_military_expenditure_pc + logdiff_military_pers_pc")
+border.mlogit <- border.mlogit %>%
+  mlogit.data(data = ., shape = "wide", 
+              choice = "state1_typology_fct", 
+              id.var = "state1")
 
-model_dyad.df <- expand_grid(iv, 
-                             dv) %>%
-  mutate(formula = paste0(dv, " ~ ", iv))
+mlogit_mod <- mlogit(as.formula(paste0("state1_typology_fct", " ~ 1|", iv[10])), data = border.mlogit, reflevel = "Checkpoint")
 
-# Apply the glm-formula
-result_dyadic.df <- model_dyad.df %>%
-  mutate(model = map(formula, ~glm(as.formula(.), 
-                                   family = binomial(link = "logit"), 
-                                   data = border.df) %>%
-                       margins(.) %>%
-                       summary(.)))
+                          ##########################
+                          #   MULTIPLE IMPUTATION  #
+                          ##########################
 
-result_dyadic.df <- result_dyadic.df %>% 
-  unnest(model) %>%
-  group_by(dv) %>%
-  nest()
+# Model vars
+border.mi <- border.df %>%
+  select(state1_typology_fct, state1_gdp_log, share_export, share_import, state1_polity, 
+         refugees_incoming_log, disp_from_2000_to_2010, state1_nterror_log,
+         diff_relig, state1_military_expenditure_perc_gdp_log, state1, state1)
 
-# Create coefplots
-result_dyadic.df <- result_dyadic.df %>%
-  mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
-                        geom_point(aes(x = factor, y = AME), stat = "identity") +
-                        geom_errorbar(aes(x = factor, 
-                                          ymin = AME - (SE * qnorm((1-0.95)/2)),
-                                          ymax = AME + (SE * qnorm((1-0.95)/2))
-                        )) +
-                        ylim(-1, 1) +
-                        coord_flip() +
-                        labs(
-                          title = .y,
-                          x = "", y = "") +
-                        theme_minimal()
-  ))
-
-# Display all coefplots
-wrap_plots(result_dyadic.df$plots)
+# MI
+border.mi <- amelia(border.mi, m = 5, idvars = "state1")
 
                           ##########################
                           #       EXPORT FIGS      #
