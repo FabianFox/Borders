@@ -120,7 +120,13 @@ trade.df <- import("C:/Users/guelzauf/Seafile/Meine Bibliothek/Projekte/C01_Gren
   mutate(state1 = countrycode(sourcevar = state1, origin = "cown", destination = "iso3c", custom_match = custom.match),
          state2 = countrycode(sourcevar = state2, origin = "cown", destination = "iso3c", custom_match = custom.match),
          import = na_if(import, -9),
-         export = na_if(export, -9))
+         export = na_if(export, -9)) %>%
+  group_by(state1) %>%
+  mutate(total_import = sum(import, na.rm = TRUE),
+         total_export = sum(export, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(share_import = import / total_import * 100,
+         share_export = export / total_export * 100)
   
 # Make the dataset (long) dyadic
 # (1) Duplicate dataset, swap country identifiers and rename them
@@ -130,13 +136,16 @@ swap.df <- trade.df %>%
     state2 = state1,
   ) %>%
   rename(export = import,
-         import = export)
+         import = export,
+         share_export = share_import,
+         share_import = share_export
+         )
 
 # (2) Merge trade.df and swap.df
 trade.df <- trade.df %>%
   bind_rows(., swap.df) %>%
   mutate(dyadName = paste(state1, state2, sep = "_")) %>%
-  select(dyadName, state1, state2, export, import) %>%
+  select(dyadName, state1, state2, contains(c("export", "import"))) %>%
   arrange(dyadName) %>%
   mutate(export_log = log1p(export),
          import_log = log1p(import))
@@ -281,7 +290,6 @@ border.df <- border.df %>%
 # Year: 2017 
 # retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
 ## -------------------------------------------------------------------------- ##
-
 relig.df <- import("https://correlatesofwar.org/data-sets/world-religion-data/wrp-national-data-1/@@download/file/WRP_national.csv", format = ",") %>%
   select(1:40, -sumrelig) %>%
   filter(year == 2010) %>%
@@ -316,9 +324,14 @@ border.df <- border.df %>%
 # Missing values filled by Pew Research Center: Religious Composition by Country, 2010-2050
 # retrieved from: https://www.pewforum.org/2015/04/02/religious-projection-table/2010/number/all/
 # accessed: 2019/05/31
-
 border.df[border.df$state1 =="SSD",]$state1_relig <- "chrst"
 border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
+
+# Create variables: muslim majority (binary) & different majority religions in dyad
+border.df <- border.df %>%
+  mutate(state1_muslim = if_else(state1_relig == "islm", 1, 0),
+         state2_muslim = if_else(state2_relig == "islm", 1, 0),
+         diff_relig = if_else(state1_relig != state2_relig, 1, 0))
 
 # COW: Dyadic MIDs and Dyadic Wars V3.1
 # Variable: statea, stateb, strtyr, endyear, year, outcome
@@ -338,12 +351,15 @@ dispute.df <- import("./data/dyadic_mid_31_may_2018.dta") %>%
                               destination = "iso3c", custom_match = custom.match),
          state2 = countrycode(sourcevar = stateb, origin = "cown", 
                               destination = "iso3c", custom_match = custom.match),
-         disp_since2000 = 1) %>%
-  select(state1, state2, disp_year = year, disp_outcome = outcome, disp_since2000)
+         disp_from_2000_to_2010 = 1) %>%
+  select(state1, state2, disp_year = year, 
+         disp_outcome = outcome, 
+         disp_from_2000_to_2010)
 
 # Join to source data 
 border.df <- border.df %>%
-  left_join(dispute.df)
+  left_join(dispute.df) %>%
+  mutate(disp_from_2000_to_2010 = if_else(is.na(disp_from_2000_to_2010), 0, 1))
 
 # START: Global Terrorism Database 
 # Variable:
@@ -554,14 +570,11 @@ for(i in seq_along(border.cia$country)){
 # Countries with no land borders should get an NA instead of character(0).
 # Thus, they conform to our base data (contiguity)
 bstate[lengths(bstate) == 0] <- NA_character_
-border.cia[lengths(border.cia$blength) == 0,] <- NA_character_
 
 # Create a borderlength.df
-borderlength.df <- tibble(
-  state1 = flatten_chr(state1),
-  bstate = flatten_chr(bstate),
-  blength = flatten_chr(border.cia$blength)
-)
+borderlength.df <- border.cia %>%
+  mutate(bstate = bstate) %>%
+  unnest(cols = c(blength, bstate))
 
 # Transform English country names to ISO3 codes
 # Use case_when to replace specifically.
@@ -582,7 +595,7 @@ borderlength.df[which(is.na(borderlength.df$bstate)),] <- c("SAU", "TUR", "MYS")
 
 # Rename borderlength.df and join to base data
 borderlength.df <- borderlength.df %>%
-  rename(state2 = bstate) %>%
+  rename(state1 = country, state2 = bstate) %>%
   group_by(state1, state2) %>%
   summarise(blength = sum(strtoi(blength), na.rm = FALSE))
 
@@ -657,7 +670,7 @@ geo.df <- geo.df %>%
   arrange(dyadName)
 
 # See duplicates here:
-geo.df[duplicated(geo.df$dyadName),"dyadName"]
+geo.df[duplicated(geo.df$dyadName), "dyadName"]
 
 # Remove duplicated entries
 geo.df <- geo.df %>%
@@ -665,7 +678,7 @@ geo.df <- geo.df %>%
 
 # (3) Match with the source data
 border.df <- border.df %>%
-  left_join(y = geo.df, by = "dyadName")
+  left_join(y = geo.df, by = c("dyadName"))
 
 # Keep only the final data
 ## -------------------------------------------------------------------------- ##
