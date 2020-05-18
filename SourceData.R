@@ -9,8 +9,8 @@
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
-if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, countrycode, readxl, jsonlite, igraph, wbstats, rio)
+if (!require("xfun")) install.packages("xfun")
+pkg_attach2("tidyverse", "countrycode", "readxl", "jsonlite", "igraph", "wbstats", "rio")
 
 # Load data:
 # - Direct Contiguity
