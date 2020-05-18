@@ -3,8 +3,9 @@
 # Notes & Issues
 # - border.df features the case MMR/PAK, which does not share a common border
 # - monadic descriptive analysis needs updating
-# - FRA-GUY must be added
-# - missing values: Amelia MI
+# - FRA-GUY must be added [X]
+# - missing values: mice
+# 
 
                             ###################
                             #      SETUP      #
@@ -12,8 +13,9 @@
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
-if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, janitor, broom, margins, patchwork, gtools, nnet, Amelia, ggeffects)
+if (!require("xfun")) install.packages("xfun")
+pkg_attach2("tidyverse", "janitor", "broom", "margins", "patchwork", "gtools",
+            "nnet", "ggeffects", "mice")
 
 
                             ###################
@@ -22,7 +24,6 @@ p_load(tidyverse, janitor, broom, margins, patchwork, gtools, nnet, Amelia, ggef
 
 # Load: Source data and border indicator
 ### ------------------------------------------------------------------------ ###
-
 # Source data
 source("SourceData.R")
 
@@ -119,6 +120,8 @@ theme.basic <- theme_minimal() +
                             #       EDA       #
                             ###################
 
+#                               UNIVARIATE                                     
+
 # Exploratory analysis of indicator
 ### ------------------------------------------------------------------------ ###
 # Distribution of indicator (in %)
@@ -179,7 +182,8 @@ global_dist.df <- border.df %>%
 #  filter(state1_typology %in% c("barrier border", "fortified border")) %>%
 #  summarise(colsum = colSums(.[,2]))
 
-# Monadic
+
+#                                  MONADIC
 ### ------------------------------------------------------------------------ ###
 
 # Economy
@@ -263,9 +267,9 @@ border_monvars.fig <- border_monvars.nest %>%
 # Put figures together with patchwork
 border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots)
 
-# Dyadic 
-### ------------------------------------------------------------------------ ###
 
+#                                 DYADIC 
+### ------------------------------------------------------------------------ ###
 # Create dyadic variables
 # On transformations, see Fox & Weisberg: CAR, p. 131f. 
 border.df <- border.df %>%
@@ -356,17 +360,12 @@ border_dyadvars.fig <- border_dyadvars.nest %>%
                           #       REGRESSION       #
                           ##########################
 
-# Logistic regression on indicators
-### ------------------------------------------------------------------------ ###
-
 # Approach
 # Bivariate
 # (A) (1) Builder characteristics &  (2) neigbour characteristics
 # Multivariate
 # (B) Full model
-# (C) Flows
-# (D) Combined effects (dyadic effects)
-# (E) Combination of border typology, i.e. fortified_fortified...
+# (C) Combination of border typology, i.e. fortified_fortified...
 
 # Note:
 # Fitted probabilities between 0 and 1 occurred: 
@@ -407,12 +406,18 @@ iv <- c(
   state1_nterror_log +
   diff_relig +
   state1_military_expenditure_perc_gdp_log"
+  
+  # (C)
+  # (D)
   )
 
 # Create model dataframe
 model <- expand_grid(iv, dv) %>%
   mutate(formula = paste0(dv, " ~ ", iv))
 
+
+#                             LOGISTIC REGRESSION
+### ------------------------------------------------------------------------ ###
 # Apply the glm-formula
 result_glm.df <- model %>%
   mutate(model = map(formula, ~glm(as.formula(.), 
@@ -501,7 +506,7 @@ result_B.df <- result_B.df %>%
 multivariate_B.fig <- wrap_plots(result_B.df$plots)
 
 
-# Multinomial logistic regression
+#                           MULTINOMIAL REGRESSION
 ### ------------------------------------------------------------------------ ###
 # nnet::multinom 
 border.df <- border.df %>%
@@ -510,27 +515,154 @@ border.df <- border.df %>%
 
 # Apply multinom
 model_mnom.df <- multinom(
-  as.formula(paste0("state1_typology_fct", " ~ ", iv[10])), 
+  as.formula(paste0("state1_typology_fct", " ~ ", iv[10])),
+  Hess = TRUE,
   data = border.df)
 
 # Tidy
+# Log odds
 result_mnom.df <- model_mnom.df %>%
-  tidy(., conf.int = TRUE, conf.level = 0.95, exponentiate = FALSE) %>%
+  tidy(., conf.int = TRUE, conf.level = 0.95, exponentiate = FALSE) %>% # exponentiate: TRUE
+  filter(term != "(Intercept)") %>%
   mutate(pstars = stars.pval(p.value),
          y.level = factor(y.level, 
                        levels = c("'No man's land'", "Landmark", "Checkpoint", 
-                                  "Barrier", "Fortified"))) %>%
-  filter(term != "(Intercept)")
+                                  "Barrier", "Fortified")),
+         term_fc = fct_rev(factor(term, 
+                                  levels = c("state1_gdp_log",
+                                             "share_export",
+                                             "share_import",
+                                             "state1_polity",
+                                             "refugees_incoming_log",
+                                             "disp_from_2000_to_2010",
+                                             "state1_nterror_log",
+                                             "diff_relig",
+                                             "state1_military_expenditure_perc_gdp_log"),
+                                  labels = c("GDP pc (log), builder",
+                                             "Share export",
+                                             "Share import",
+                                             "Polity, builder",
+                                             "Refugees, incoming",
+                                             "Territorial Disputes",
+                                             "Terror incidents (log), builder",
+                                             "Different majority religion",
+                                             "Military expenditures pc (log), builder"))))
+ 
 
-# Plot
+# Odds ratios
+result_mnom_rr.df <- model_mnom.df %>%
+  tidy(., conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE) %>% # exponentiate: TRUE
+  filter(term != "(Intercept)") %>%
+  mutate(pstars = stars.pval(p.value),
+         y.level = factor(y.level, 
+                          levels = c("'No man's land'", "Landmark", "Checkpoint", 
+                                     "Barrier", "Fortified")),
+         term_fc = fct_rev(factor(term, 
+                                  levels = c("state1_gdp_log",
+                                             "share_export",
+                                             "share_import",
+                                             "state1_polity",
+                                             "refugees_incoming_log",
+                                             "disp_from_2000_to_2010",
+                                             "state1_nterror_log",
+                                             "diff_relig",
+                                             "state1_military_expenditure_perc_gdp_log"),
+                                  labels = c("GDP pc (log), builder",
+                                             "Share export",
+                                             "Share import",
+                                             "Polity, builder",
+                                             "Refugees, incoming",
+                                             "Territorial Disputes",
+                                             "Terror incidents (log), builder",
+                                             "Different majority religion",
+                                             "Military expenditures pc (log), builder")))) 
+
+# AME
+result_mnom_ame.df <- tibble(
+  category = model_mnom.df$lev,
+  model = list(model_mnom.df)) %>%
+  mutate(estimate = map2(.x = model, .y = category, 
+                    ~summary(margins(model = .x, category = .y)))) %>%
+  select(-model) %>%
+  unnest(cols = estimate) %>%
+  select(1:3) %>%
+  mutate(category = factor(category, 
+                          levels = c("'No man's land'", "Landmark", "Checkpoint", 
+                                     "Barrier", "Fortified")),
+         term_fc = fct_rev(factor(factor, 
+                                  levels = c("state1_gdp_log",
+                                             "share_export",
+                                             "share_import",
+                                             "state1_polity",
+                                             "refugees_incoming_log",
+                                             "disp_from_2000_to_2010",
+                                             "state1_nterror_log",
+                                             "diff_relig",
+                                             "state1_military_expenditure_perc_gdp_log"),
+                                  labels = c("GDP pc (log), builder",
+                                             "Share export",
+                                             "Share import",
+                                             "Polity, builder",
+                                             "Refugees, incoming",
+                                             "Territorial Disputes",
+                                             "Terror incidents (log), builder",
+                                             "Different majority religion",
+                                             "Military expenditures pc (log), builder")))) 
+
+# Plots
+# ---------------------------------------------------------------------------- #
+# Plot (log odds)
 ggplot(data = result_mnom.df) +
-  geom_point(aes(x = term, y = estimate), stat = "identity") +
-  geom_errorbar(aes(x = term, 
-                    ymin = conf.low,
-                    ymax = conf.high)) +
+  # not significant
+  geom_point(data = function(x){x[!x$pstars %in% c("**", "***"),]},
+             aes(x = term_fc, y = estimate), stat = "identity", alpha = .3) +
+  geom_errorbar(data = function(x){x[!x$pstars %in% c("**", "***"),]}, 
+    aes(x = term_fc, ymin = conf.low, ymax = conf.high), alpha = .3) +
+  # significant
+  geom_point(data = function(x){x[x$pstars %in% c("**", "***"),]},
+             aes(x = term_fc, y = estimate), stat = "identity") +
+  geom_errorbar(data = function(x){x[x$pstars %in% c("**", "***"),]}, 
+                aes(x = term_fc, ymin = conf.low, ymax = conf.high)) +
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(~y.level) +
-  ylim(-7.5, 7.5) +
+  coord_flip() +
+  scale_y_continuous(breaks = seq(-15, 15, 5), 
+                     labels = c("-15", "-10", "-5", "0", "5", "10", "15"),
+                     limits = c(-16, 16)) +
+  labs(
+    title = "",
+    x = "", y = "") +
+  theme_minimal()
+
+# Plot (relative risks)
+ggplot(data = result_mnom_rr.df) +
+  # not significant
+  geom_point(data = function(x){x[!x$pstars %in% c("**", "***"),]},
+             aes(x = term_fc, y = estimate), stat = "identity", alpha = .3) +
+  geom_errorbar(data = function(x){x[!x$pstars %in% c("**", "***"),]}, 
+                aes(x = term_fc, ymin = conf.low, ymax = conf.high), alpha = .3) +
+  # significant
+  geom_point(data = function(x){x[x$pstars %in% c("**", "***"),]},
+             aes(x = term_fc, y = estimate), stat = "identity") +
+  geom_errorbar(data = function(x){x[x$pstars %in% c("**", "***"),]}, 
+                aes(x = term_fc, ymin = conf.low, ymax = conf.high)) +
+  geom_hline(yintercept = 1, colour = "gray", linetype = 2) +
+  facet_wrap(~y.level) +
+  ylim(-1, 15) +
+  coord_flip() +
+  labs(
+    title = "",
+    x = "", y = "") +
+  theme_minimal()
+
+# Plot (AME)
+mnom_ame.fig <- ggplot(data = result_mnom_ame.df %>%
+                         filter(category != "Checkpoint")) +
+  # not significant
+  geom_point(aes(x = term_fc, y = AME), stat = "identity", alpha = .5) +
+  geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
+  facet_wrap(~category) +
+  ylim(-0.4, 0.4) +
   coord_flip() +
   labs(
     title = "",
@@ -538,40 +670,98 @@ ggplot(data = result_mnom.df) +
   theme_minimal()
 
 # ggeffects (see: https://strengejacke.github.io/ggeffects/))
-result.mnom.gg <- ggeffect(model_mnom.df)
+result_mnom.gg <- ggeffect(model_mnom.df, terms = "state1_gdp_log") %>%
+  mutate(response.level = if_else(response.level == "X.No.man.s.land.", 
+                                  "'No man's land'", response.level),
+         response.level = factor(response.level, 
+                                levels = c("'No man's land'", "Landmark", "Checkpoint", 
+                                           "Barrier", "Fortified")))
+# Plot
+ggplot(result_mnom.gg, aes(x, predicted)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .1) +
+  facet_wrap(~response.level) +
+  scale_x_continuous(breaks = log1p(c(400, 1000, 3000, 8000, 20000, 80000)), 
+                     labels = c(400, 1000, 3000, 8000, 20000, 80000)) + 
+  labs(
+    title = "",
+    x = "", y = "") +
+  theme_minimal()
 
-# mlogit
-### ------------------------------------------------------------------------ ###
-# Transform to factor
-border.df <- border.df %>%
-  mutate(state1_typology_fct = fac_ind_en(state1_typology),
-         state1_typology_fct = fct_relevel(state1_typology_fct, "Checkpoint"))
-
-# Retain only model vars
-border.mlogit <- border.df %>%
-  select(state1_typology_fct, state1_gdp_log, share_export, share_import, state1_polity, 
-         refugees_incoming_log, disp_from_2000_to_2010, state1_nterror_log,
-         diff_relig, state1_military_expenditure_perc_gdp_log, state1, state1)
-
-border.mlogit <- border.mlogit %>%
-  mlogit.data(data = ., shape = "wide", 
-              choice = "state1_typology_fct", 
-              id.var = "state1")
-
-mlogit_mod <- mlogit(as.formula(paste0("state1_typology_fct", " ~ 1|", iv[10])), data = border.mlogit, reflevel = "Checkpoint")
+# Interpretation: AME at specific values
+# ---------------------------------------------------------------------------- #
+# AME (+/- 1 SD)
+result_mnom_ame_sd.df <- tibble(
+  category = model_mnom.df$lev,
+  model = list(model_mnom.df)) %>%
+  mutate(estimate = map2(
+    .x = model, .y = category, 
+    ~summary(
+      margins(
+        model = .x, category = .y, 
+        variables = c("state1_gdp_log", 
+                      "state1_military_expenditure_perc_gdp_log"), 
+        change = "sd")))) %>%
+  select(-model) %>%
+  unnest(cols = estimate) %>%
+  select(1:3) %>% 
+  arrange(factor)
 
                           ##########################
                           #   MULTIPLE IMPUTATION  #
                           ##########################
 
-# Model vars
-border.mi <- border.df %>%
-  select(state1_typology_fct, state1_gdp_log, share_export, share_import, state1_polity, 
-         refugees_incoming_log, disp_from_2000_to_2010, state1_nterror_log,
-         diff_relig, state1_military_expenditure_perc_gdp_log, state1, state1)
+# Get the variables used in the multinomial model
+vars <- str_replace_all(paste0("state1_typology|", iv[[10]]), "[ +\n ]+", "|")
 
-# MI
-border.mi <- amelia(border.mi, m = 5, idvars = "state1")
+# Select models vars
+model.df <- border.df %>%
+  select(matches(vars)) %>%
+  select(-c(1:5)) %>%
+  mutate(state1_typology = factor(state1_typology),
+         diff_relig = factor(diff_relig),
+         disp_from_2000_to_2010 = factor(disp_from_2000_to_2010))
+
+# Distribution of NA
+model.df %>%
+  summarise_all(~sum(is.na(.)) / length(.) * 100)
+
+# Remove variables with excessive number of missings
+model.df <- model.df %>%
+  select(-state1_nterror_log)
+
+# Run an "empty" imputation and adjust elements
+mice.mat <- mice(model.df, maxit = 0)
+
+# Elements that need to be adjusted
+# Predictor matrix
+pred.mat <- mice.mat$predictorMatrix
+
+pred.mat[, c("state1_typology")] <- 0
+
+# Imputation method
+imp_method <- mice.mat$method
+
+imp_method[c("diff_relig", "disp_from_2000_to_2010")] <- "logreg"
+
+# Create imputed datasets
+model_imp.df <- mice(model.df, m = 5, predictorMatrix = pred.mat, 
+                     method = imp_method, print =  FALSE)
+
+# Export to Stata
+# Adopted from: https://stackoverflow.com/questions/49965155/importing-mice-object-to-stata-for-analysis
+# Gather complete models incl. base data
+dslist <- complete(model_imp.df, "all", include = TRUE)
+
+# Add IDs to distinguish imputed models
+data_out <- bind_rows(dslist, .id = "_mj") %>%
+  group_by(`_mj`) %>%
+  mutate("_mi" = row_number()) %>%
+  ungroup() %>%
+  mutate(`_mj` = strtoi(`_mj`))
+
+# Export
+export(data_out, file = "./output/stata/imputed_data.dta")
 
                           ##########################
                           #       EXPORT FIGS      #
@@ -592,9 +782,9 @@ ggsave(
 )
 
 # Figure 4
-# Logististic regression: B
+# Multinomial regression (AME)
 ggsave(
-  plot = multivariate_B.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Logistic Regression B.tiff", width = 14, height = 8, unit = "in",
+  plot = mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Multinomial Regression - AME.tiff", width = 14, height = 8, unit = "in",
   dpi = 300
 )
 
