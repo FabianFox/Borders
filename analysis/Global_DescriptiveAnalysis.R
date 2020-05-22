@@ -720,7 +720,8 @@ model.df <- border.df %>%
   select(-c(1:5)) %>%
   mutate(state1_typology = factor(state1_typology),
          diff_relig = factor(diff_relig),
-         disp_from_2000_to_2010 = factor(disp_from_2000_to_2010))
+         disp_from_2000_to_2010 = factor(disp_from_2000_to_2010)) %>%
+  rename(state1_military = state1_military_expenditure_perc_gdp_log)
 
 # Distribution of NA
 model.df %>%
@@ -762,6 +763,33 @@ data_out <- bind_rows(dslist, .id = "_mj") %>%
 
 # Export
 export(data_out, file = "./output/stata/imputed_data.dta")
+
+# Stata code
+# ---------------------------------------------------------------------------- #
+#* Load file created in R
+#use "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\imputed_data.dta" 
+
+#* Declare as multiple imputed data
+#mi import ice
+
+#* Multinomial regression
+#mi estimate : mlogit state1_typology state1_gdp_log share_export share_import state1_polity refugees_incoming_log disp_from_2000_to_2010 diff_relig state1_military
+
+#* https://www.stata.com/statalist/archive/2012-03/msg00927.html
+#forval i = 1/4 {
+#  est res ml
+#  mimrgns, dydx(*) pr(out(`i')) post
+# est sto ml`i'
+#}
+
+#* Export results
+#esttab ml1 ml2 ml3 ml4 using "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\mlogit_results.csv", nostar plain replace
+
+# Re-import results
+# ---------------------------------------------------------------------------- #
+# Load results
+ame_results.df <- import("./output/stata/mlogit_results.csv")
+
 
                           ##########################
                           #       EXPORT FIGS      #
