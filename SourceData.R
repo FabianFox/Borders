@@ -5,7 +5,7 @@
 
 # Notes & Issues
 # - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
-# - French Guyana
+# - Missing data in terror incidents
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
@@ -412,7 +412,8 @@ border.df <- border.df %>%
          state1_nterror_log = log1p(state1_nterror),
          state2_nterror_log = log1p(state2_nterror),
          state1_death_toll_log = log1p(state1_death_toll),
-         state2_death_toll_log = log1p(state2_death_toll))
+         state2_death_toll_log = log1p(state2_death_toll)) %>%
+  transmute_at(vars(matches("[terror|toll]")), replace_na, 0)
 
 # World Refugee Dataset
 # Variable:
