@@ -718,7 +718,8 @@ vars <- str_replace_all(paste0("state1_typology|", iv[[10]]), "[ +\n ]+", "|")
 model.df <- border.df %>%
   select(matches(vars)) %>%
   select(-c(1:5)) %>%
-  mutate(state1_typology = factor(state1_typology),
+  mutate(state1_typology = fac_ind_en(state1_typology),
+         state1_typology = fct_relevel(state1_typology, "Checkpoint"),
          diff_relig = factor(diff_relig),
          disp_from_2000_to_2010 = factor(disp_from_2000_to_2010)) %>%
   rename(state1_military = state1_military_expenditure_perc_gdp_log)
@@ -728,8 +729,7 @@ model.df %>%
   summarise_all(~sum(is.na(.)) / length(.) * 100)
 
 # Remove variables with excessive number of missings
-model.df <- model.df %>%
-  select(-state1_nterror_log)
+# none
 
 # Run an "empty" imputation and adjust elements
 mice.mat <- mice(model.df, maxit = 0)
@@ -746,7 +746,7 @@ imp_method <- mice.mat$method
 imp_method[c("diff_relig", "disp_from_2000_to_2010")] <- "logreg"
 
 # Create imputed datasets
-model_imp.df <- mice(model.df, m = 5, predictorMatrix = pred.mat, 
+model_imp.df <- mice(model.df, m = 25, predictorMatrix = pred.mat, 
                      method = imp_method, print =  FALSE)
 
 # Export to Stata
@@ -788,7 +788,29 @@ export(data_out, file = "./output/stata/imputed_data.dta")
 # Re-import results
 # ---------------------------------------------------------------------------- #
 # Load results
-ame_results.df <- import("./output/stata/mlogit_results.csv")
+ame_results.df <- import("./output/stata/mlogit_results.csv", skip = 2) %>%
+  magrittr::set_colnames(c("variable", 
+                           "checkpoint border", 
+                           "frontier border",
+                           "landmark border",
+                           "barrier border",
+                           "fortified border")) %>%
+  slice(1:n()-1) 
+
+# Create a tidy df
+ame_results.df[seq(2, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_se")
+ame_results.df[seq(3, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_t")
+ame_results.df[seq(4, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_p")
+ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_coef")
+
+ame_results.df <- ame_results.df %>%
+  mutate(type = str_extract(variable, "coef$+|se$+|t$+|p$+"),
+         variable = str_replace(variable, "_coef$+|_se$+|_t$+|_p$+", "")) %>%
+  pivot_longer(2:6, names_to = "typology") %>%
+  pivot_wider(names_from = type, values_from = value) %>%
+  mutate(pstars = stars.pval(p))
+
+# Plot
 
 
                           ##########################
