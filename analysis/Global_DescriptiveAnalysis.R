@@ -15,7 +15,7 @@
 ## -------------------------------------------------------------------------- ##
 if (!require("xfun")) install.packages("xfun")
 pkg_attach2("tidyverse", "janitor", "broom", "margins", "patchwork", "gtools",
-            "nnet", "ggeffects", "mice")
+            "nnet", "ggeffects", "mice", "rio")
 
 
                             ###################
@@ -368,8 +368,14 @@ border_dyadvars.fig <- border_dyadvars.nest %>%
 # (C) Combination of border typology, i.e. fortified_fortified...
 
 # Note:
+
+# Logit models:
 # Fitted probabilities between 0 and 1 occurred: 
 # - Landmark ~ Polity (https://stats.stackexchange.com/questions/336424/issue-with-complete-separation-in-logistic-regression-in-r)
+
+# Multinomial regression
+# - The measure for military disputes behaves badly because several categories
+#   are not involved in any disputes (disp_from_2000_to_2010)
 
 # Create dummy variables of typology
 border.df <- border.df %>%
@@ -390,7 +396,6 @@ iv <- c(
   "share_import",
   "state1_polity",
   "refugees_incoming_log",
-  "disp_from_2000_to_2010",
   "state1_nterror_log",
   "diff_relig",
   "state1_military_expenditure_perc_gdp_log",
@@ -402,7 +407,6 @@ iv <- c(
   share_import +
   state1_polity +
   refugees_incoming_log +
-  disp_from_2000_to_2010 +
   state1_nterror_log +
   diff_relig +
   state1_military_expenditure_perc_gdp_log"
@@ -712,7 +716,7 @@ result_mnom_ame_sd.df <- tibble(
                           ##########################
 
 # Get the variables used in the multinomial model
-vars <- str_replace_all(paste0("state1_typology|", iv[[10]]), "[ +\n ]+", "|")
+vars <- str_replace_all(paste0("state1_typology|", iv[[9]]), "[ +\n ]+", "|")
 
 # Select models vars
 model.df <- border.df %>%
@@ -720,8 +724,7 @@ model.df <- border.df %>%
   select(-c(1:5)) %>%
   mutate(state1_typology = fac_ind_en(state1_typology),
          state1_typology = fct_relevel(state1_typology, "Checkpoint"),
-         diff_relig = factor(diff_relig),
-         disp_from_2000_to_2010 = factor(disp_from_2000_to_2010)) %>%
+         diff_relig = factor(diff_relig)) %>%
   rename(state1_military = state1_military_expenditure_perc_gdp_log)
 
 # Distribution of NA
@@ -743,7 +746,7 @@ pred.mat[, c("state1_typology")] <- 0
 # Imputation method
 imp_method <- mice.mat$method
 
-imp_method[c("diff_relig", "disp_from_2000_to_2010")] <- "logreg"
+imp_method[c("diff_relig")] <- "logreg"
 
 # Create imputed datasets
 model_imp.df <- mice(model.df, m = 25, predictorMatrix = pred.mat, 
@@ -766,31 +769,33 @@ export(data_out, file = "./output/stata/imputed_data.dta")
 
 # Stata code
 # ---------------------------------------------------------------------------- #
-#* Load file created in R
-#use "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\imputed_data.dta" 
+# * Load file created in R
+# use "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\imputed_data.dta" 
 
-#* Declare as multiple imputed data
-#mi import ice
+# * Declare as multiple imputed data
+# mi import ice
 
-#* Multinomial regression
-#mi estimate : mlogit state1_typology state1_gdp_log share_export share_import state1_polity refugees_incoming_log disp_from_2000_to_2010 diff_relig state1_military
+# * Multinomial regression
+# mi estimate : mlogit state1_typology state1_gdp_log share_export share_import state1_polity refugees_incoming_log diff_relig state1_military state1_nterror_log
 
-#* https://www.stata.com/statalist/archive/2012-03/msg00927.html
-#forval i = 1/4 {
-#  est res ml
-#  mimrgns, dydx(*) pr(out(`i')) post
-# est sto ml`i'
-#}
+# * https://www.stata.com/statalist/archive/2012-03/msg00927.html
+# est sto ml
 
-#* Export results
-#esttab ml1 ml2 ml3 ml4 using "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\mlogit_results.csv", nostar plain replace
+# forval i = 2/5 {
+#   est res ml
+#   mimrgns, dydx(*) pr(out(`i')) post
+#  est sto ml`i'
+# }
+
+# * Export results
+# esttab ml2 ml3 ml4 ml5 using "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\mlogit_results.csv", cells(b se t p ci) nostar plain replace
 
 # Re-import results
 # ---------------------------------------------------------------------------- #
 # Load results
 ame_results.df <- import("./output/stata/mlogit_results.csv", skip = 2) %>%
   magrittr::set_colnames(c("variable", 
-                           "checkpoint border", 
+                           # "checkpoint border", 
                            "frontier border",
                            "landmark border",
                            "barrier border",
@@ -798,20 +803,36 @@ ame_results.df <- import("./output/stata/mlogit_results.csv", skip = 2) %>%
   slice(1:n()-1) 
 
 # Create a tidy df
-ame_results.df[seq(2, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_se")
-ame_results.df[seq(3, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_t")
-ame_results.df[seq(4, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_p")
-ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 4), "variable"], "_coef")
+ame_results.df[seq(2, nrow(ame_results.df), 5), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"], "_se")
+ame_results.df[seq(3, nrow(ame_results.df), 5), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"], "_t")
+ame_results.df[seq(4, nrow(ame_results.df), 5), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"], "_p")
+ame_results.df[seq(5, nrow(ame_results.df), 5), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"], "_ci")
+ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"], "_coef")
 
+# Make longer
 ame_results.df <- ame_results.df %>%
-  mutate(type = str_extract(variable, "coef$+|se$+|t$+|p$+"),
-         variable = str_replace(variable, "_coef$+|_se$+|_t$+|_p$+", "")) %>%
-  pivot_longer(2:6, names_to = "typology") %>%
+  mutate(type = str_extract(variable, "coef$+|se$+|t$+|p$+|ci$+"),
+         variable = str_replace(variable, "_coef$+|_se$+|_t$+|_p$+|_ci$+", "")) %>%
+  pivot_longer(2:5, names_to = "typology") %>%
   pivot_wider(names_from = type, values_from = value) %>%
+  separate(ci, into = c("conf.low", "conf.high"), sep = ",") %>%
+  mutate_at(vars(3:8), as.numeric) %>%
   mutate(pstars = stars.pval(p))
 
 # Plot
-
+# Create coefplots
+ame_results.df %>%
+  ggplot() +
+  geom_point(aes(x = variable, y = coef), stat = "identity") +
+  geom_errorbar(aes(x = variable,
+                    ymin = conf.low,
+                    ymax = conf.high)) +
+  geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
+  facet_wrap(.~fac_ind_en(typology)) +
+  ylim(-.5, .5) +
+  coord_flip() +
+  labs(x = "", y = "") +
+  theme_minimal()
 
                           ##########################
                           #       EXPORT FIGS      #
