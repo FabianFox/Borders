@@ -125,7 +125,7 @@ theme.basic <- theme_minimal() +
 # Exploratory analysis of indicator
 ### ------------------------------------------------------------------------ ###
 # Distribution of indicator (in %)
-ind.perc.df <- border.df %>%
+ind_perc.df <- border.df %>%
   group_by(state1_typology) %>%
   summarise(count = n()) %>%
   mutate(perc = count / sum(count) * 100,
@@ -140,7 +140,7 @@ border.df %>%
   mutate(rounded_perc = round(perc, digit = 1))
 
 # Only the global distribution
-ind.perc.fig <- ind.perc.df %>%
+ind_perc.fig <- ind_perc.df %>%
   ggplot(mapping = aes(x = state1_typology, y = perc)) +
   geom_bar(stat = "identity") +
   labs(x = "", y = "") +
@@ -149,24 +149,30 @@ ind.perc.fig <- ind.perc.df %>%
   scale_y_continuous(labels = function(x) paste0(x, "%"))
 
 # Distribution of indicator across continents + global
-ind.perc.region.fig <- border.df %>%
+ind_perc_region.fig <- border.df %>%
+  mutate(continent1 = if_else(state1 == "PNG", "Asia", continent1)) %>%
   group_by(continent1, state1_typology) %>%
   summarise(count = n()) %>%
   mutate(group_n = sum(count),
          perc = count / group_n * 100) %>% 
   select(-group_n) %>%
-  bind_rows(ind.perc.df) %>%
+  bind_rows(ind_perc.df) %>%
   ggplot(mapping = aes(x = fac_ind_en(state1_typology), y = perc)) +
   geom_bar(stat = "identity") +
   geom_text(stat = "identity", aes(label = paste0("N = ", count)), vjust = -0.3,
             size = 2.8) +
-  facet_wrap(~continent1) +
+  facet_wrap(~factor(continent1, 
+                     levels = c("Africa", "Americas", "Asia", "Europe", "World"),
+                     labels = c("Africa", "North & South America", "Asia (incl. Oceania)", 
+                                "Europe", "World"))) +
   labs(x = "", y = "") +
   theme.basic +
+  theme(axis.text = element_text(size = 8)) +
   scale_y_continuous(labels = function(x) paste0(x, "%"))
 
 # Round global distribution (regions)
 global_dist.df <- border.df %>%
+  mutate(continent1 = if_else(state1 == "PNG", "Asia", continent1)) %>%
   group_by(continent1, state1_typology) %>%
   summarise(count = n()) %>%
   mutate(group_n = sum(count),
@@ -196,20 +202,20 @@ border_monvars <- border.df %>%
   group_by(state1_typology) %>%
   summarise_at(vars(
     # control
-    state1_pop_per_million,
+    # state1_pop_per_million,
     # economy
-    state1_gdp,
+    state1_gdp_log,
+    export_log,
+    import_log,
     # politics
     state1_polity,
     # security
-    state1_death_toll,
     state1_military_expenditure_perc_gdp,
-    state1_military_pers_p1000,
+    state1_nterror_log,
     # culture
-    # state1_relig
+    
     # migration
-    # refugees_incoming_agg_pc,
-    # refugees_incoming_pc
+    refugees_incoming_log
   ),
                list(~mean(., na.rm = T), 
                     ~sd(., na.rm = T), 
@@ -233,20 +239,22 @@ border_monvars.nest <- border_monvars %>%
   nest() %>%
   ungroup() %>%
   mutate(title = c(
-    "Annual victims of terror incidents",
-    "GDP per capita (in USD)",
+    "Dyadic export (in USD), log",
+    "Dyadic import (in USD), log",
+    "Dyadic refugee inflow, log",
+    "GDP per capita (in USD), log",
     "Military expenditure (as % of GDP)",
-    "Military personnel (per 1.000 population)",
-    "Political regime (PolityIV)",
-    "Population size (in million)"
+    "Terror incidents (annual), log",
+    "Political regime (PolityIV)"
   ),
   subtitle = c(
+    "\nData: COW: Trade (2014)",
+    "\nData: COW: Trade (2014)",
+    "\nData: World Refugee Dataset (2015)",
+    "\nData: WorldBank (2017)",
+    "\nData: WorldBank (2017)",
     "\nData: Global Terrorism Database (2017)",
-    "\nData: WorldBank (2017)",
-    "\nData: WorldBank (2017)",
-    "\nData: WorldBank (2017)",
-    "\nData: PolityIV (2017)",
-    "\nData: WorldBank (2017)"
+    "\nData: PolityIV (2017)"
   ))
 
 # Plot
@@ -254,18 +262,37 @@ border_monvars.fig <- border_monvars.nest %>%
   mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
                         geom_bar(aes(x = fac_ind_en(state1_typology), y = mean),
                                  stat = "identity") +
+                        scale_y_continuous(breaks = seq(0, 10, 2), limits = c(-0.4,10.2)) +
                         labs(
                           title = ..2,
                           caption = ..3,
                           x = "", y = "") +
                         theme.basic +
                         theme(
-                          plot.title = element_text(size = 9, face = "bold"),
-                          plot.caption = element_text(size = 7))
+                          plot.title = element_text(size = 10, face = "bold"),
+                          plot.caption = element_text(size = 8),
+                          axis.text = element_text(size = 10))
                       ))
 
+# Chart for different majority religions across the border
+diff_relig.fig <- border.df %>%
+  group_by(state1_typology) %>%
+  summarise(diff_relig = sum(diff_relig) / n() * 100) %>%
+  mutate(not_diff_relig = 100 - diff_relig) %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind_en(state1_typology), y = diff_relig),
+           stat = "identity") +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  labs(title = "Share of different majority religions",
+    caption = "\nData: COW: World Religion Data (2010)",
+    x = "", y = "") +
+  theme.basic +
+  theme(plot.title = element_text(size = 10, face = "bold"),
+        plot.caption = element_text(size = 8),
+        axis.text = element_text(size = 10))
+
 # Put figures together with patchwork
-border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots)
+border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + diff_relig.fig
 
 
 #                                 DYADIC 
@@ -392,8 +419,8 @@ dv <- c("state1_typology_frontier_border", "state1_typology_landmark_border",
 iv <- c(
   # (A1) Builder characteristics (bivariate)
   "state1_gdp_log",
-  "share_export",
-  "share_import",
+  "export_log",
+  "import_log",
   "state1_polity",
   "refugees_incoming_log",
   "state1_nterror_log",
@@ -403,8 +430,8 @@ iv <- c(
 
   # (B) Full model
   "state1_gdp_log +
-  share_export +
-  share_import +
+  export_log +
+  import_log +
   state1_polity +
   refugees_incoming_log +
   state1_nterror_log +
@@ -519,7 +546,7 @@ border.df <- border.df %>%
 
 # Apply multinom
 model_mnom.df <- multinom(
-  as.formula(paste0("state1_typology_fct", " ~ ", iv[10])),
+  as.formula(paste0("state1_typology_fct", " ~ ", iv[9])),
   Hess = TRUE,
   data = border.df)
 
@@ -534,20 +561,18 @@ result_mnom.df <- model_mnom.df %>%
                                   "Barrier", "Fortified")),
          term_fc = fct_rev(factor(term, 
                                   levels = c("state1_gdp_log",
-                                             "share_export",
-                                             "share_import",
+                                             "export_log",
+                                             "import_log",
                                              "state1_polity",
                                              "refugees_incoming_log",
-                                             "disp_from_2000_to_2010",
                                              "state1_nterror_log",
                                              "diff_relig",
                                              "state1_military_expenditure_perc_gdp_log"),
                                   labels = c("GDP pc (log), builder",
-                                             "Share export",
-                                             "Share import",
+                                             "Export",
+                                             "Import",
                                              "Polity, builder",
                                              "Refugees, incoming",
-                                             "Territorial Disputes",
                                              "Terror incidents (log), builder",
                                              "Different majority religion",
                                              "Military expenditures pc (log), builder"))))
@@ -563,20 +588,18 @@ result_mnom_rr.df <- model_mnom.df %>%
                                      "Barrier", "Fortified")),
          term_fc = fct_rev(factor(term, 
                                   levels = c("state1_gdp_log",
-                                             "share_export",
-                                             "share_import",
+                                             "export_log",
+                                             "import_log",
                                              "state1_polity",
                                              "refugees_incoming_log",
-                                             "disp_from_2000_to_2010",
                                              "state1_nterror_log",
                                              "diff_relig",
                                              "state1_military_expenditure_perc_gdp_log"),
                                   labels = c("GDP pc (log), builder",
-                                             "Share export",
-                                             "Share import",
+                                             "Export",
+                                             "Import",
                                              "Polity, builder",
                                              "Refugees, incoming",
-                                             "Territorial Disputes",
                                              "Terror incidents (log), builder",
                                              "Different majority religion",
                                              "Military expenditures pc (log), builder")))) 
@@ -595,20 +618,18 @@ result_mnom_ame.df <- tibble(
                                      "Barrier", "Fortified")),
          term_fc = fct_rev(factor(factor, 
                                   levels = c("state1_gdp_log",
-                                             "share_export",
-                                             "share_import",
+                                             "export_log",
+                                             "import_log",
                                              "state1_polity",
                                              "refugees_incoming_log",
-                                             "disp_from_2000_to_2010",
                                              "state1_nterror_log",
                                              "diff_relig",
                                              "state1_military_expenditure_perc_gdp_log"),
                                   labels = c("GDP pc (log), builder",
-                                             "Share export",
-                                             "Share import",
+                                             "Export",
+                                             "Import",
                                              "Polity, builder",
                                              "Refugees, incoming",
-                                             "Territorial Disputes",
                                              "Terror incidents (log), builder",
                                              "Different majority religion",
                                              "Military expenditures pc (log), builder")))) 
@@ -776,7 +797,7 @@ export(data_out, file = "./output/stata/imputed_data.dta")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log share_export share_import state1_polity refugees_incoming_log diff_relig state1_military state1_nterror_log
+# mi estimate : mlogit state1_typology state1_gdp_log export_log import_log state1_polity refugees_incoming_log i.diff_relig state1_military state1_nterror_log
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # est sto ml
@@ -800,7 +821,7 @@ ame_results.df <- import("./output/stata/mlogit_results.csv", skip = 2) %>%
                            "landmark border",
                            "barrier border",
                            "fortified border")) %>%
-  slice(1:n()-1) 
+  slice(1:n()-1)
 
 # Create a tidy df
 ame_results.df[seq(2, nrow(ame_results.df), 5), "variable"] <- paste0(ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"], "_se")
@@ -811,22 +832,46 @@ ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"] <- paste0(ame_result
 
 # Make longer
 ame_results.df <- ame_results.df %>%
-  mutate(type = str_extract(variable, "coef$+|se$+|t$+|p$+|ci$+"),
+  filter(str_detect(variable, "^1", negate = TRUE)) %>%
+  mutate(variable = str_replace_all(variable, "2.", ""), 
+         type = str_extract(variable, "coef$+|se$+|t$+|p$+|ci$+"),
          variable = str_replace(variable, "_coef$+|_se$+|_t$+|_p$+|_ci$+", "")) %>%
   pivot_longer(2:5, names_to = "typology") %>%
   pivot_wider(names_from = type, values_from = value) %>%
   separate(ci, into = c("conf.low", "conf.high"), sep = ",") %>%
   mutate_at(vars(3:8), as.numeric) %>%
-  mutate(pstars = stars.pval(p))
+  mutate(pstars = stars.pval(p),
+         variable = fct_rev(factor(variable, 
+                                   levels = c("state1_gdp_log",
+                                              "export_log",
+                                              "import_log",
+                                              "state1_polity",
+                                              "refugees_incoming_log",
+                                              "diff_relig",
+                                              "state1_military",
+                                              "state1_nterror_log"),
+                                   labels = c("GDP pc (log), builder",
+                                              "Export (log)",
+                                              "Import (log)",
+                                              "Polity, builder",
+                                              "Refugees, incoming (log)",
+                                              "Different majority religion",
+                                              "Military expenditures pc (log), builder",
+                                              "Terror incidents (log), builder"))))
 
 # Plot
 # Create coefplots
-ame_results.df %>%
+result_mnom_ame.fig <- ame_results.df %>%
   ggplot() +
-  geom_point(aes(x = variable, y = coef), stat = "identity") +
-  geom_errorbar(aes(x = variable,
-                    ymin = conf.low,
-                    ymax = conf.high)) +
+  geom_point(data = function(x){x[!x$pstars %in% c("*" ,"**", "***"),]},
+             aes(x = variable, y = coef), stat = "identity", alpha = .3) +
+  geom_errorbar(data = function(x){x[!x$pstars %in% c("*" ,"**", "***"),]}, 
+                aes(x = variable, ymin = conf.low, ymax = conf.high), alpha = .3) +
+  # significant
+  geom_point(data = function(x){x[x$pstars %in% c("*" ,"**", "***"),]},
+             aes(x = variable, y = coef), stat = "identity") +
+  geom_errorbar(data = function(x){x[x$pstars %in% c("*" ,"**", "***"),]}, 
+                aes(x = variable, ymin = conf.low, ymax = conf.high)) +
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(.~fac_ind_en(typology)) +
   ylim(-.5, .5) +
@@ -841,21 +886,21 @@ ame_results.df %>%
 # Figure 2
 # Relative distribution of border infrastructure
 ggsave(
-  plot = ind.perc.region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", width = 8, height = 6, unit = "in",
+  plot = ind_perc_region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", width = 8, height = 6, unit = "in",
   dpi = 300
 )
 
 # Figure 3
 # Bivariate relationship
 ggsave(
-  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", width = 9, height = 6, unit = "in",
+  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", width = 12, height = 8, unit = "in",
   dpi = 300
 )
 
 # Figure 4
 # Multinomial regression (AME)
 ggsave(
-  plot = mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Multinomial Regression - AME.tiff", width = 14, height = 8, unit = "in",
+  plot = result_mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Multinomial Regression - AME.tiff", width = 14, height = 8, unit = "in",
   dpi = 300
 )
 
