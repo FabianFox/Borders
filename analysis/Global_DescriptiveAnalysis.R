@@ -740,8 +740,9 @@ result_mnom_ame_sd.df <- tibble(
 vars <- str_replace_all(paste0("state1_typology|", iv[[9]]), "[ +\n ]+", "|")
 
 # Select models vars
+# Note: state1: clustervar
 model.df <- border.df %>%
-  select(matches(vars)) %>%
+  select(matches(vars), state1) %>%
   select(-c(1:5)) %>%
   mutate(state1_typology = fac_ind_en(state1_typology),
          state1_typology = fct_relevel(state1_typology, "Checkpoint"),
@@ -762,11 +763,14 @@ mice.mat <- mice(model.df, maxit = 0)
 # Predictor matrix
 pred.mat <- mice.mat$predictorMatrix
 
+# Do not use for imputation
 pred.mat[, c("state1_typology")] <- 0
+pred.mat[, c("state1")] <- 0
 
-# Imputation method
+# Edit imputation method
 imp_method <- mice.mat$method
 
+# logistic regression for binary vars
 imp_method[c("diff_relig")] <- "logreg"
 
 # Create imputed datasets
@@ -797,7 +801,7 @@ export(data_out, file = "./output/stata/imputed_data.dta")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log export_log import_log state1_polity refugees_incoming_log i.diff_relig state1_military state1_nterror_log
+# mi estimate : mlogit state1_typology state1_gdp_log export_log import_log state1_polity refugees_incoming_log i.diff_relig state1_military state1_nterror_log, vce(cluster state1)
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # est sto ml
@@ -874,7 +878,7 @@ result_mnom_ame.fig <- ame_results.df %>%
                 aes(x = variable, ymin = conf.low, ymax = conf.high)) +
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(.~fac_ind_en(typology)) +
-  ylim(-.5, .5) +
+  ylim(-.2, .2) +
   coord_flip() +
   labs(x = "", y = "") +
   theme_minimal()
@@ -913,7 +917,7 @@ ggsave(
 )
 
 # Figure A2
-# Logististic regression: A1
+# Logistic regression: A1
 ggsave(
   plot = bivariate_A1.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/A2 - Logistic Regression A1.tiff", width = 14, height = 8, unit = "in",
   dpi = 300
