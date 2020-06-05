@@ -122,6 +122,7 @@ trade.df <- import("C:/Users/guelzauf/Seafile/Meine Bibliothek/Projekte/C01_Gren
          import = na_if(import, -9),
          export = na_if(export, -9)) %>%
   group_by(state1) %>%
+  # total import/export are not valid due to missing values
   mutate(total_import = sum(import, na.rm = TRUE),
          total_export = sum(export, na.rm = TRUE)) %>%
   ungroup() %>%
@@ -413,7 +414,7 @@ border.df <- border.df %>%
          state2_nterror_log = log1p(state2_nterror),
          state1_death_toll_log = log1p(state1_death_toll),
          state2_death_toll_log = log1p(state2_death_toll)) %>%
-  transmute_at(vars(matches("[terror|toll]")), replace_na, 0)
+  mutate_at(vars(matches("terror|toll")), replace_na, 0)
 
 # World Refugee Dataset
 # Variable:
