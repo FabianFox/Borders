@@ -58,10 +58,18 @@ list.fences <- map2(
 fortified_borders.df <- indicator.df %>%
   filter(typology %in% c("fortified border", "barrier border")) %>%
   left_join(list.fences, by = c("state1", "state2")) %>%
-  as_tibble()
+  as_tibble() 
 
-# Merge
-# duplicates bc some countries share multiple borders, i.e. RUS/CHN
+# Create a column that indicates whether a valid year exist
+# See: https://stackoverflow.com/questions/55671205/fill-missing-values-rowwise-right-left
+built <- t(zoo::na.locf(t(fortified_borders.df[, c(5:10)])))[,6]
+
+# Add to dataframe
+fortified_borders.df <- fortified_borders.df %>%
+  mutate(built_combined = built)
+
+# Join indicator data
+# duplicates because some countries share multiple borders, i.e. RUS/CHN
 border.df <- indicator.df %>%
   left_join(border.df) %>%
   mutate(
@@ -238,7 +246,9 @@ border_monvars.nest <- border_monvars %>%
   group_by(variable) %>%
   nest() %>%
   ungroup() %>%
-  mutate(title = c(
+  mutate(
+    obs = map(data, ~sum(.x$obs)),
+    title = c(
     "Dyadic export (in USD), log",
     "Dyadic import (in USD), log",
     "Dyadic refugee inflow, log",
@@ -247,7 +257,7 @@ border_monvars.nest <- border_monvars %>%
     "Terror incidents (annual), log",
     "Political regime (PolityIV)"
   ),
-  subtitle = c(
+  subtitle_1 = c(
     "\nData: COW: Trade (2014)",
     "\nData: COW: Trade (2014)",
     "\nData: World Refugee Dataset (2015)",
@@ -255,14 +265,16 @@ border_monvars.nest <- border_monvars %>%
     "\nData: WorldBank (2017)",
     "\nData: Global Terrorism Database (2017)",
     "\nData: PolityIV (2017)"
-  ))
+  ),
+  subtitle = paste0(subtitle_1, "\nObservations: ", obs)) %>%
+  select(-subtitle_1)
 
 # Plot
 border_monvars.fig <- border_monvars.nest %>%
   mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
                         geom_bar(aes(x = fac_ind_en(state1_typology), y = mean),
                                  stat = "identity") +
-                        scale_y_continuous(breaks = seq(0, 10, 2), limits = c(-0.4,10.2)) +
+                        scale_y_continuous(breaks = seq(0, 10, 2), limits = c(-0.4,10.5)) +
                         labs(
                           title = ..2,
                           caption = ..3,
@@ -283,8 +295,10 @@ diff_relig.fig <- border.df %>%
   geom_bar(aes(x = fac_ind_en(state1_typology), y = diff_relig),
            stat = "identity") +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
-  labs(title = "Share of different majority religions",
-    caption = "\nData: COW: World Religion Data (2010)",
+  labs(
+    title = "Share of different majority religions",
+    caption = paste0("\nData: COW: World Religion Data (2010)", "\nObservations: ",
+                     sum(!is.na(border.df$diff_relig))),
     x = "", y = "") +
   theme.basic +
   theme(plot.title = element_text(size = 10, face = "bold"),
