@@ -321,14 +321,14 @@ border.df <- border.df %>%
     absdiff_gdp = abs(state1_gdp - state2_gdp),
     ratio_gdp = state1_gdp / state2_gdp,
     
-      # trade
+    # trade
     log_diff_trade = export_log - import_log,
     
     # politics
     diff_pol = state1_polity - state2_polity,
     absdiff_pol = abs(state1_polity - state2_polity),
     
-      # refugee flows
+    # refugee flows
     diff_refugees = refugees_outgoing - refugees_incoming,
     logdiff_refugees = refugees_outgoing_log - refugees_incoming_log,
     
@@ -403,10 +403,11 @@ border_dyadvars.fig <- border_dyadvars.nest %>%
 
 # Approach
 # Bivariate
-# (A) (1) Builder characteristics &  (2) neigbour characteristics
+# (A)  Bivariate regression
 # Multivariate
-# (B) Full model
-# (C) Combination of border typology, i.e. fortified_fortified...
+# (B1) Full model
+# (B2) More dyad variables
+# (C)  Combination of border typology, i.e. fortified_fortified...
 
 # Note:
 
@@ -433,6 +434,7 @@ dv <- c("state1_typology_frontier_border", "state1_typology_landmark_border",
 iv <- c(
   # (A1) Builder characteristics (bivariate)
   "state1_gdp_log",
+  "ratio_gdp",
   "export_log",
   "import_log",
   "state1_polity",
@@ -442,17 +444,19 @@ iv <- c(
   "state1_military_expenditure_perc_gdp_log",
   # (A2) Neighbour characteristics (bivariate)
 
-  # (B) Full model
+  # (B1) Full model
   "state1_gdp_log +
-  export_log +
-  import_log +
+  ratio_gdp +
   state1_polity +
   refugees_incoming_log +
   state1_nterror_log +
   diff_relig +
   state1_military_expenditure_perc_gdp_log"
   
+  # (B2) Dyad variables
+
   # (C)
+  
   # (D)
   )
 
@@ -487,17 +491,17 @@ result_sd.df <- result_glm.df %>%
   mutate(model = map(model, ~mutate(., 
                                     pstars = stars.pval(p))))
          
-# Results: Model A1 'builder effects'
+# Results: Model - bivariate
 ### ------------------------------------------------------------------------ ###
-# Filter to model A1
-result_bivariate_A1.df <- result_ame.df %>%
+# Filter to model A
+result_bivariate_A.df <- result_ame.df %>%
   filter(!(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
   group_by(dv) %>%
   nest()
 
 # Create coefplots
-result_bivariate_A1.df <- result_bivariate_A1.df %>%
+result_bivariate_A.df <- result_bivariate_A.df %>%
   mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
                         geom_point(aes(x = factor, y = AME), stat = "identity") +
                         geom_errorbar(aes(x = factor, 
@@ -514,7 +518,7 @@ result_bivariate_A1.df <- result_bivariate_A1.df %>%
   ))
 
 # Display all coefplots
-bivariate_A1.fig <- wrap_plots(result_bivariate_A1.df$plots)
+bivariate_A.fig <- wrap_plots(result_bivariate_A.df$plots)
 
 # Results: Model A2 'neighbour effects'
 ### ------------------------------------------------------------------------ ###
@@ -560,7 +564,7 @@ border.df <- border.df %>%
 
 # Apply multinom
 model_mnom.df <- multinom(
-  as.formula(paste0("state1_typology_fct", " ~ ", iv[9])),
+  as.formula(paste0("state1_typology_fct", " ~ ", iv[10])),
   Hess = TRUE,
   data = border.df)
 
@@ -575,16 +579,14 @@ result_mnom.df <- model_mnom.df %>%
                                   "Barrier", "Fortified")),
          term_fc = fct_rev(factor(term, 
                                   levels = c("state1_gdp_log",
-                                             "export_log",
-                                             "import_log",
+                                             "ratio_gdp",
                                              "state1_polity",
                                              "refugees_incoming_log",
                                              "state1_nterror_log",
                                              "diff_relig",
                                              "state1_military_expenditure_perc_gdp_log"),
                                   labels = c("GDP pc (log), builder",
-                                             "Export",
-                                             "Import",
+                                             "GDP pc, ratio",
                                              "Polity, builder",
                                              "Refugees, incoming",
                                              "Terror incidents (log), builder",
@@ -602,16 +604,14 @@ result_mnom_rr.df <- model_mnom.df %>%
                                      "Barrier", "Fortified")),
          term_fc = fct_rev(factor(term, 
                                   levels = c("state1_gdp_log",
-                                             "export_log",
-                                             "import_log",
+                                             "ratio_gdp",
                                              "state1_polity",
                                              "refugees_incoming_log",
                                              "state1_nterror_log",
                                              "diff_relig",
                                              "state1_military_expenditure_perc_gdp_log"),
                                   labels = c("GDP pc (log), builder",
-                                             "Export",
-                                             "Import",
+                                             "GDP pc, ratio",
                                              "Polity, builder",
                                              "Refugees, incoming",
                                              "Terror incidents (log), builder",
@@ -632,16 +632,14 @@ result_mnom_ame.df <- tibble(
                                      "Barrier", "Fortified")),
          term_fc = fct_rev(factor(factor, 
                                   levels = c("state1_gdp_log",
-                                             "export_log",
-                                             "import_log",
+                                             "ratio_gdp",
                                              "state1_polity",
                                              "refugees_incoming_log",
                                              "state1_nterror_log",
                                              "diff_relig",
                                              "state1_military_expenditure_perc_gdp_log"),
                                   labels = c("GDP pc (log), builder",
-                                             "Export",
-                                             "Import",
+                                             "GDP pc, ratio",
                                              "Polity, builder",
                                              "Refugees, incoming",
                                              "Terror incidents (log), builder",
@@ -668,27 +666,6 @@ ggplot(data = result_mnom.df) +
   scale_y_continuous(breaks = seq(-15, 15, 5), 
                      labels = c("-15", "-10", "-5", "0", "5", "10", "15"),
                      limits = c(-16, 16)) +
-  labs(
-    title = "",
-    x = "", y = "") +
-  theme_minimal()
-
-# Plot (relative risks)
-ggplot(data = result_mnom_rr.df) +
-  # not significant
-  geom_point(data = function(x){x[!x$pstars %in% c("**", "***"),]},
-             aes(x = term_fc, y = estimate), stat = "identity", alpha = .3) +
-  geom_errorbar(data = function(x){x[!x$pstars %in% c("**", "***"),]}, 
-                aes(x = term_fc, ymin = conf.low, ymax = conf.high), alpha = .3) +
-  # significant
-  geom_point(data = function(x){x[x$pstars %in% c("**", "***"),]},
-             aes(x = term_fc, y = estimate), stat = "identity") +
-  geom_errorbar(data = function(x){x[x$pstars %in% c("**", "***"),]}, 
-                aes(x = term_fc, ymin = conf.low, ymax = conf.high)) +
-  geom_hline(yintercept = 1, colour = "gray", linetype = 2) +
-  facet_wrap(~y.level) +
-  ylim(-1, 15) +
-  coord_flip() +
   labs(
     title = "",
     x = "", y = "") +
@@ -751,7 +728,7 @@ result_mnom_ame_sd.df <- tibble(
                           ##########################
 
 # Get the variables used in the multinomial model
-vars <- str_replace_all(paste0("state1_typology|", iv[[9]]), "[ +\n ]+", "|")
+vars <- str_replace_all(paste0("state1_typology|", iv[[10]]), "[ +\n ]+", "|")
 
 # Select models vars
 # Note: state1: clustervar
@@ -794,17 +771,12 @@ model_imp.df <- mice(model.df, m = 25, predictorMatrix = pred.mat,
 # Export to Stata
 # Adopted from: https://stackoverflow.com/questions/49965155/importing-mice-object-to-stata-for-analysis
 # Gather complete models incl. base data
-dslist <- complete(model_imp.df, "all", include = TRUE)
-
-# Add IDs to distinguish imputed models
-data_out <- bind_rows(dslist, .id = "_mj") %>%
-  group_by(`_mj`) %>%
-  mutate("_mi" = row_number()) %>%
-  ungroup() %>%
-  mutate(`_mj` = strtoi(`_mj`))
+imp_out <- mice::complete(model_imp.df, "long", include = TRUE) %>%
+  rename("_mj" = ".imp",
+         "_mi" = ".id")
 
 # Export
-export(data_out, file = "./output/stata/imputed_data.dta")
+export(imp_out, file = "./output/stata/imputed_data.dta")
 
 # Stata code
 # ---------------------------------------------------------------------------- #
@@ -861,16 +833,14 @@ ame_results.df <- ame_results.df %>%
   mutate(pstars = stars.pval(p),
          variable = fct_rev(factor(variable, 
                                    levels = c("state1_gdp_log",
-                                              "export_log",
-                                              "import_log",
+                                              "gdp_ratio",
                                               "state1_polity",
                                               "refugees_incoming_log",
                                               "diff_relig",
                                               "state1_military",
                                               "state1_nterror_log"),
                                    labels = c("GDP pc (log), builder",
-                                              "Export (log)",
-                                              "Import (log)",
+                                              "GDP pc, ratio",
                                               "Polity, builder",
                                               "Refugees, incoming (log)",
                                               "Different majority religion",
