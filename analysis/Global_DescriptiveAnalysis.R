@@ -833,7 +833,7 @@ ame_results.df <- ame_results.df %>%
   mutate(pstars = stars.pval(p),
          variable = fct_rev(factor(variable, 
                                    levels = c("state1_gdp_log",
-                                              "gdp_ratio",
+                                              "ratio_gdp",
                                               "state1_polity",
                                               "refugees_incoming_log",
                                               "diff_relig",
