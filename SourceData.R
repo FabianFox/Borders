@@ -87,6 +87,10 @@ wb.info <- wb(country = unique(contdird$state1),
                             "MS.MIL.XPND.GD.ZS"), 
               startdate = 2017, enddate = 2017, return_wide = TRUE)
 
+wb_2014.info <- wb(country = unique(contdird$state1),
+                   indicator = c("NY.GDP.MKTP.PP.CD"), 
+                   startdate = 2014, enddate = 2014, return_wide = TRUE)
+
 # (2) Match to base data
 border.df <- contdird %>%
   mutate(
@@ -96,14 +100,17 @@ border.df <- contdird %>%
     state2_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$NY.GDP.PCAP.CD,
     state1_military_pers = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.TOTL.P1,
     state2_military_pers = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.TOTL.P1,
-#    state1_military_expenditure_usd = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
-#    state2_military_expenditure_usd = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
+#   state1_military_expenditure_usd = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
+#   state2_military_expenditure_usd = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.CD, (not available)
     state1_military_expenditure_perc_gdp = wb.info[match(contdird$state1, wb.info$iso3c),]$MS.MIL.XPND.GD.ZS,
     state2_military_expenditure_perc_gdp = wb.info[match(contdird$state2, wb.info$iso3c),]$MS.MIL.XPND.GD.ZS,
     state1_military_pers_pc = state1_military_pers / state1_pop,
     state2_military_pers_pc = state2_military_pers / state2_pop,
     state1_military_pers_p1000 = (state1_military_pers / state1_pop) * 1000,
-    state2_military_pers_p1000 = (state2_military_pers / state2_pop) * 1000)
+    state2_military_pers_p1000 = (state2_military_pers / state2_pop) * 1000,
+#   GDP from 2014 for trade dependence
+    state1_gdp_2014 = wb_2014.info[match(contdird$state1, wb_2014.info$iso3c),]$NY.GDP.MKTP.PP.CD,
+    state2_gdp_2014 = wb_2014.info[match(contdird$state2, wb_2014.info$iso3c),]$NY.GDP.MKTP.PP.CD)
 
 # Create logged versions of the above variables
 border.df <- border.df %>%
@@ -153,7 +160,9 @@ trade.df <- trade.df %>%
 
 # (3) Join to border.df
 border.df <- border.df %>%
-  left_join(y = trade.df)
+  left_join(y = trade.df) %>%
+  # Economic dependence (Boehmer & Pena 2012, p. 278)
+  mutate(economic_dependence = (import + export) / state1_gdp_2014)
 
 # Polity IV
 # Variable: Polity2
