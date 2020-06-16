@@ -162,7 +162,8 @@ trade.df <- trade.df %>%
 border.df <- border.df %>%
   left_join(y = trade.df) %>%
   # Economic dependence (Boehmer & Pena 2012, p. 278)
-  mutate(economic_dependence = (import + export) / state1_gdp_2014)
+  mutate(economic_dependence = (import + export) / state1_gdp_2014,
+         economic_dependence_log = log1p(economic_dependence))
 
 # Polity IV
 # Variable: Polity2
