@@ -3,8 +3,8 @@
 # Notes & Issues
 # - border.df features the case MMR/PAK, which does not share a common border
 # - monadic descriptive analysis needs updating
-# - FRA-GUY must be added [X]
-# - missing values: mice
+# - 
+# 
 # 
 
                             ###################
@@ -172,10 +172,12 @@ ind_perc_region.fig <- border.df %>%
   facet_wrap(~factor(continent1, 
                      levels = c("Africa", "Americas", "Asia", "Europe", "World"),
                      labels = c("Africa", "North & South America", "Asia (incl. Oceania)", 
-                                "Europe", "World"))) +
+                                "Europe", "Global distribution"))) +
   labs(x = "", y = "") +
   theme.basic +
-  theme(axis.text = element_text(size = 8)) +
+  theme(axis.text = element_text(size = 8),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
+        panel.spacing.y = unit(2, "lines")) +
   scale_y_continuous(labels = function(x) paste0(x, "%"))
 
 # Round global distribution (regions)
@@ -206,22 +208,24 @@ global_dist.df <- border.df %>%
 # --------------------------------- #
 # Summary stats
 border_monvars <- border.df %>%
-  mutate(state1_pop_per_million = state1_pop / 1000000) %>%
+  mutate(state1_pop_per_million = state1_pop / 1000000,
+         ratio_gdp = state1_gdp / state2_gdp) %>%
   group_by(state1_typology) %>%
   summarise_at(vars(
     # control
     # state1_pop_per_million,
     # economy
     state1_gdp_log,
-    export_log,
-    import_log,
+    ratio_gdp,
+    # export_log,
+    # import_log,
     # politics
     state1_polity,
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
     # culture
-    
+    # (see below)
     # migration
     refugees_incoming_log
   ),
@@ -249,8 +253,9 @@ border_monvars.nest <- border_monvars %>%
   mutate(
     obs = map(data, ~sum(.x$obs)),
     title = c(
-    "Dyadic export (in USD), log",
-    "Dyadic import (in USD), log",
+    "GDP pc, ratio",  
+    # "Dyadic export (in USD), log",
+    # "Dyadic import (in USD), log",
     "Dyadic refugee inflow, log",
     "GDP per capita (in USD), log",
     "Military expenditure (as % of GDP)",
@@ -258,11 +263,12 @@ border_monvars.nest <- border_monvars %>%
     "Political regime (PolityIV)"
   ),
   subtitle_1 = c(
-    "\nData: COW: Trade (2014)",
-    "\nData: COW: Trade (2014)",
+    "\nData: World Bank (2017)",
+    # "\nData: COW: Trade (2014)",
+    # "\nData: COW: Trade (2014)",
     "\nData: World Refugee Dataset (2015)",
-    "\nData: WorldBank (2017)",
-    "\nData: WorldBank (2017)",
+    "\nData: World Bank (2017)",
+    "\nData: World Bank (2017)",
     "\nData: Global Terrorism Database (2017)",
     "\nData: PolityIV (2017)"
   ),
@@ -283,7 +289,7 @@ border_monvars.fig <- border_monvars.nest %>%
                         theme(
                           plot.title = element_text(size = 10, face = "bold"),
                           plot.caption = element_text(size = 8),
-                          axis.text = element_text(size = 10))
+                          axis.text = element_text(size = 8))
                       ))
 
 # Chart for different majority religions across the border
@@ -303,13 +309,15 @@ diff_relig.fig <- border.df %>%
   theme.basic +
   theme(plot.title = element_text(size = 10, face = "bold"),
         plot.caption = element_text(size = 8),
-        axis.text = element_text(size = 10))
+        axis.text = element_text(size = 8))
 
 # Put figures together with patchwork
 border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + diff_relig.fig
 
 
 #                                 DYADIC 
+#
+# Note: Revise plotting of dyadic variables
 ### ------------------------------------------------------------------------ ###
 # Create dyadic variables
 # On transformations, see Fox & Weisberg: CAR, p. 131f. 
@@ -765,8 +773,8 @@ imp_method <- mice.mat$method
 imp_method[c("diff_relig")] <- "logreg"
 
 # Create imputed datasets
-model_imp.df <- mice(model.df, m = 25, predictorMatrix = pred.mat, 
-                     method = imp_method, print =  FALSE)
+model_imp.df <- mice(model.df, m = 50, predictorMatrix = pred.mat, 
+                     method = imp_method, print = FALSE)           #set.seed
 
 # Export to Stata
 # Adopted from: https://stackoverflow.com/questions/49965155/importing-mice-object-to-stata-for-analysis
@@ -778,7 +786,10 @@ imp_out <- mice::complete(model_imp.df, "long", include = TRUE) %>%
 # Export
 export(imp_out, file = "./output/stata/imputed_data.dta")
 
-# Stata code
+                           ##########################
+                           #         Stata          #
+                           ##########################
+
 # ---------------------------------------------------------------------------- #
 # * Load file created in R
 # use "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\imputed_data.dta" 
@@ -867,6 +878,53 @@ result_mnom_ame.fig <- ame_results.df %>%
   labs(x = "", y = "") +
   theme_minimal()
 
+
+                          ##########################
+                          #   MICE: MULTINOM IN R  #
+                          ##########################
+
+# adopted for mice from: https://www.andrewheiss.com/blog/2018/03/07/amelia-tidy-melding/
+
+# Tidy dataframe with nested imputations
+imp_nest.df <- complete(model_imp.df, include = F, action = "long") %>%
+  rename(imp_no = `.imp`) %>%
+  group_by(imp_no) %>%
+  nest() %>%
+  mutate(formula = paste0("state1_typology", " ~ ", 
+                          str_replace_all(iv[10],
+                                          "state1_military_expenditure_perc_gdp_log",
+                                          "state1_military")))
+
+# Model across dataframes
+imp_nest.df <- imp_nest.df %>%
+  mutate(model = map2(.x = formula, .y = data, 
+                      ~multinom(as.formula(.x), data = .y, 
+                                family = binomial(link = "logit"))))
+
+# Combine dataframes with categories in order to map margins-command
+imp_nest.df <- imp_nest.df %>%
+  mutate(category = c("'No man's land';Checkpoint;Fortified;Barrier;Landmark")) %>%
+  separate_rows(category, sep = ";")
+
+# Apply margins-command
+imp_nest.df <- imp_nest.df %>%
+  mutate(ame = pmap(list(model, category, data),
+                    ~summary(margins(model = ..1, category = ..2, data = ..3)) %>%
+                      select(factor, AME)))
+
+# Retain only AMEs and prepare for combining using Amelia::mi.meld
+imp_ame.df <- imp_nest.df %>%
+  unnest(cols = ame) %>%
+  select(imp_no, category, factor, ame = AME) %>%
+  spread(factor, ame) %>%
+  group_by(category) %>%
+  nest()
+
+# Combine with adjusted mi.meld
+am.m <- nrow(q)
+ones <- matrix(1, nrow = 1, ncol = am.m)
+imp.q <- (ones %*% q)/am.m
+
                           ##########################
                           #       EXPORT FIGS      #
                           ##########################
@@ -881,7 +939,7 @@ ggsave(
 # Figure 3
 # Bivariate relationship
 ggsave(
-  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", width = 12, height = 8, unit = "in",
+  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", width = 12, height = 10, unit = "in",
   dpi = 300
 )
 
