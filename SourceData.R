@@ -82,14 +82,14 @@ contdird <- contdird %>%
 ## -------------------------------------------------------------------------- ##
 # (1)
 # Download data (mrv = newest available; here: 2017)
-wb.info <- wb(country = unique(contdird$state1),
+wb.info <- wb_data(country = unique(contdird$state1),
               indicator = c("NY.GDP.PCAP.CD", "SP.POP.TOTL", "MS.MIL.TOTL.P1", 
                             "MS.MIL.XPND.GD.ZS"), 
-              startdate = 2017, enddate = 2017, return_wide = TRUE)
+              start_date = 2017, end_date = 2017, return_wide = TRUE)
 
-wb_2014.info <- wb(country = unique(contdird$state1),
+wb_2014.info <- wb_data(country = unique(contdird$state1),
                    indicator = c("NY.GDP.MKTP.PP.CD"), 
-                   startdate = 2014, enddate = 2014, return_wide = TRUE)
+                   start_date = 2014, end_date = 2014, return_wide = TRUE)
 
 # (2) Match to base data
 border.df <- contdird %>%
