@@ -694,7 +694,7 @@ mnom_ame.fig <- ggplot(data = result_mnom_ame.df %>%
   theme_minimal()
 
 # ggeffects (see: https://strengejacke.github.io/ggeffects/))
-result_mnom.gg <- ggeffect(model_mnom.df, terms = "state1_gdp_log") %>%
+result_mnom.gg <- ggeffect(model_mnom.df, terms = "ratio_gdp") %>%
   mutate(response.level = if_else(response.level == "X.No.man.s.land.", 
                                   "'No man's land'", response.level),
          response.level = factor(response.level, 
@@ -924,6 +924,27 @@ imp_ame.df <- imp_nest.df %>%
 am.m <- nrow(q)
 ones <- matrix(1, nrow = 1, ncol = am.m)
 imp.q <- (ones %*% q)/am.m
+
+# Wrap Amelia::mi.meld into a function
+# Note: We only have coefficients not SE (not yet supported by margins)
+meld_coef_fun <- function(x){
+  # data
+  df <- imp_ame.df$data[[4]] %>% 
+    select(-1)
+  # nrow
+  am.m <- nrow(df)
+  # ones 
+  ones <- matrix(1, nrow = 1, ncol = am.m)
+  # combine quantities
+  imp.q <- as_tibble((ones %*% as.matrix(df)) / am.m)
+  # return
+  return(imp.q)
+}
+
+# Apply function
+imp_ame.df <- imp_ame.df %>%
+  mutate(imp_ame = map(.x = data, 
+                       ~meld_coef_fun(.x)))
 
                           ##########################
                           #       EXPORT FIGS      #
