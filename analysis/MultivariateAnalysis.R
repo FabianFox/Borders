@@ -693,7 +693,7 @@ mnom_ame.fig <- ggplot(data = result_mnom_ame.df %>%
     x = "", y = "") +
   theme_minimal()
 
-# ggeffects (see: https://strengejacke.github.io/ggeffects/))
+# ggeffects (see: https://strengejacke.github.io/ggeffects/)
 result_mnom.gg <- ggeffect(model_mnom.df, terms = "ratio_gdp") %>%
   mutate(response.level = if_else(response.level == "X.No.man.s.land.", 
                                   "'No man's land'", response.level),
@@ -784,7 +784,11 @@ imp_out <- mice::complete(model_imp.df, "long", include = TRUE) %>%
          "_mi" = ".id")
 
 # Export
+# Stata
 export(imp_out, file = "./output/stata/imputed_data.dta")
+
+# R
+export(model_imp.df, file = "./output/imputed_data.rds")
 
                            ##########################
                            #         Stata          #
