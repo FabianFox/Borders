@@ -5,7 +5,8 @@
 
 # Notes & Issues
 # - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
-# - Missing data in terror incidents
+# - CoW Direct Contiguity is expanded by dyad between NGA-TCD due to aridification
+#   of lake Chad, erraneous entries - ARE-QAT, MMR-PAK - are removed
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
