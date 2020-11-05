@@ -8,3 +8,4 @@ output/
 desktop.ini
 data/globalterrorismdb_0919dist.xlsx
 data/gtd_prepared.rds
+.httr-oauth
