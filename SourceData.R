@@ -6,7 +6,7 @@
 # Notes & Issues
 # - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
 # - CoW Direct Contiguity is expanded by dyad between NGA-TCD due to aridification
-#   of lake Chad, erraneous entries - ARE-QAT, MMR-PAK - are removed
+#   of lake Chad, erroneous entries - ARE-QAT, MMR-PAK - are removed
 
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
@@ -339,11 +339,21 @@ border.df <- border.df %>%
 border.df[border.df$state1 =="SSD",]$state1_relig <- "chrst"
 border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
 
-# Create variables: muslim majority (binary) & different majority religions in dyad
+# Create variables: 
+# - muslim majority (binary) 
+# - collapsed majority religion (chrst, islm, other)
+# - different majority religions in dyad
 border.df <- border.df %>%
-  mutate(state1_muslim = if_else(state1_relig == "islm", 1, 0),
+  mutate(state1_relig_shrt = if_else(state1_relig %in% c("bud", "hindgen", "jud", 
+                                                         "nonrelig", "syncgen"), "other",
+                                     state1_relig),
+         state2_relig_shrt = if_else(state2_relig %in% c("bud", "hindgen", "jud", 
+                                                         "nonrelig", "syncgen"), "other",
+                                     state2_relig),
+         state1_muslim = if_else(state1_relig == "islm", 1, 0),
          state2_muslim = if_else(state2_relig == "islm", 1, 0),
-         diff_relig = if_else(state1_relig != state2_relig, 1, 0))
+         diff_relig = if_else(state1_relig != state2_relig, 1, 0),
+         diff_relig_shrt = if_else(state1_relig_shrt != state2_relig_shrt, 1, 0))
 
 # COW: Dyadic MIDs and Dyadic Wars V3.1
 # Variable: statea, stateb, strtyr, endyear, year, outcome
