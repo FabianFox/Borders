@@ -187,6 +187,10 @@ border.df <- border.df %>%
   mutate(state1_polity = polityIV[match(border.df$state1, polityIV$iso3),]$polity2,
          state2_polity = polityIV[match(border.df$state2, polityIV$iso3),]$polity2)
 
+# (4) Difference in political regime
+border.df <- border.df %>%
+  mutate(diff_pol = state1_polity - state2_polity)
+
 # Global Transnational Mobility
 # Variable: Estimated trips
 # Year: 2016
