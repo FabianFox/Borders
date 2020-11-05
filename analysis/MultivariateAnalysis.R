@@ -219,6 +219,7 @@ border_monvars <- border.df %>%
     # import_log,
     # politics
     state1_polity,
+    diff_pol, 
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
@@ -251,16 +252,18 @@ border_monvars.nest <- border_monvars %>%
   mutate(
     obs = map(data, ~sum(.x$obs)),
     title = c(
+    "Difference in political regimes (PolityIV)",
     "GDP per capita (in USD), ratio",  
     # "Dyadic export (in USD), log",
     # "Dyadic import (in USD), log",
-    "Dyadic refugee inflow, log",
+    "Refugee inflow from neighbor, log",
     "GDP per capita (in USD), log",
     "Military expenditure (as % of GDP)",
     "Terror incidents (annual), log",
     "Political regime (PolityIV)"
   ),
   subtitle_1 = c(
+    "\nData: PolityIV (2017)",
     "\nData: World Bank (2017)",
     # "\nData: COW: Trade (2014)",
     # "\nData: COW: Trade (2014)",
@@ -275,7 +278,7 @@ border_monvars.nest <- border_monvars %>%
 
 # Custom arrange 
 border_monvars.nest <- border_monvars.nest %>%
-  mutate(order = c(2, 6, 1, 4, 5, 3)) %>%
+  mutate(order = c(4, 2, 7, 1, 5, 6, 3)) %>%
   arrange(order) %>%
   select(-order)
 
@@ -284,7 +287,7 @@ border_monvars.fig <- border_monvars.nest %>%
   mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
                         geom_bar(aes(x = fac_ind_en(state1_typology), y = mean),
                                  stat = "identity") +
-                        scale_y_continuous(breaks = seq(0, 10, 2), limits = c(-0.4,10.5)) +
+                        scale_y_continuous(breaks = seq(0, 10, 2), limits = c(-1,10.5)) +
                         labs(
                           title = ..2,
                           caption = ..3,
@@ -296,7 +299,31 @@ border_monvars.fig <- border_monvars.nest %>%
                           axis.text = element_text(size = 10))
                       ))
 
-# Chart for different majority religions across the border
+# Figures for religion indicator
+# (A) Share of majority religion in indicator
+relig.fig <- border.df %>%
+  group_by(state1_typology, state1_relig_shrt) %>%
+  summarise(relig_num = length(state1_relig_shrt)) %>%
+  group_by(state1_typology) %>%
+  mutate(relig_share = relig_num / sum(relig_num) * 100) %>%
+  ggplot() +
+  geom_bar(aes(fac_ind_en(state1_typology), y = relig_share, fill = state1_relig_shrt),
+           stat = "identity", position = "stack") +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  scale_fill_grey(start = 0.8, end = 0.2,
+                  name = "Majority\nreligion",
+                  label = c("Christian", "Islamic", "Other")) +
+  labs(
+    title = "Typology by majority religion",
+    caption = paste0("\nData: COW: World Religion Data (2010)", "\nObservations: ",
+                     sum(!is.na(border.df$state1_relig_shrt))),
+    x = "", y = "") +
+  theme.basic +
+  theme(plot.title = element_text(size = 10, face = "bold"),
+        plot.caption = element_text(size = 10),
+        axis.text = element_text(size = 10)) 
+  
+# (B) Chart for different majority religions across the border
 diff_relig.fig <- border.df %>%
   group_by(state1_typology) %>%
   summarise(diff_relig = sum(diff_relig) / n() * 100) %>%
@@ -316,12 +343,11 @@ diff_relig.fig <- border.df %>%
         axis.text = element_text(size = 10))
 
 # Put figures together with patchwork
-border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + diff_relig.fig
+border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + diff_relig.fig + relig.fig
 
 
 #                                 DYADIC 
 #
-# Note: Revise plotting of dyadic variables
 ### ------------------------------------------------------------------------ ###
 # Create dyadic variables
 # On transformations, see Fox & Weisberg: CAR, p. 131f. 
@@ -337,7 +363,7 @@ border.df <- border.df %>%
     log_diff_trade = export_log - import_log,
     
     # politics
-    diff_pol = state1_polity - state2_polity,
+    # diff_pol = state1_polity - state2_polity,
     absdiff_pol = abs(state1_polity - state2_polity),
     
     # refugee flows
@@ -368,46 +394,6 @@ border_dyadvars <- border.df %>%
     neigbour_absdiff_militaryexp_median = median(absdiff_military_expenditure_pc, na.rm = TRUE),
     neighbour_absdiff_militarypers_median = median(absdiff_military_pers_pc, na.rm = TRUE)
     )
-
-# Prepare
-border_dyadvars <- border_dyadvars %>% 
-  gather(var, value, -state1_typology) %>%
-  mutate(measure = str_extract(var, "[:alpha:]+$"),
-         variable = str_extract(var, paste0(".+(?=", measure, ")")) %>%
-           str_sub(., end = -2)) %>%
-  select(-var) %>%
-  spread(measure, value)
-
-# List-column
-border_dyadvars.nest <- border_dyadvars %>%
-  group_by(variable) %>%
-  nest() %>%
-  ungroup() %>%
-  mutate(title = c(
-    "Victims of terror incidents (in bordering state) (2014-2017)",
-    "GDP per capita in USD (of neighbour)",
-    "Military expenditure per one million population (by neighbour)",
-    "Military personnel per 1.000 population (in bordering state)",
-    "Political regime (PolityIV) (of neigbour)"
-  ),
-  subtitle = c(
-    "\nData: Global Terrorism Database",
-    "\nData: WorldBank (2017)",
-    "\nData: WorldBank (2017)",
-    "\nData: WorldBank (2017)",
-    "\nData: PolityIV (2017)"
-  ))
-
-# Plot
-border_dyadvars.fig <- border_dyadvars.nest %>%
-  mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
-                        geom_bar(aes(x = state1_typology, y = median), stat = "identity") +
-                        labs(
-                          title = ..2,
-                          caption = ..3,
-                          x = "", y = "") +
-                        theme_basic
-  ))
 
                           ##########################
                           #       REGRESSION       #
@@ -460,10 +446,12 @@ iv <- c(
   "state1_gdp_log +
   ratio_gdp +
   state1_polity +
+  diff_pol +
+  state1_military_expenditure_perc_gdp_log +
+  state1_nterror_log + 
   refugees_incoming_log +
-  state1_nterror_log +
-  diff_relig +
-  state1_military_expenditure_perc_gdp_log"
+  state1_relig_shrt +
+  diff_relig"
   
   # (B2) Dyad variables
 
@@ -746,9 +734,10 @@ vars <- str_replace_all(paste0("state1_typology|", iv[[10]]), "[ +\n ]+", "|")
 # Note: state1: clustervar
 model.df <- border.df %>%
   select(matches(vars), state1) %>%
-  select(-c(1:5)) %>%
+  select(-c(1:5, "absdiff_pol", "diff_relig_shrt")) %>%
   mutate(state1_typology = fac_ind_en(state1_typology),
          state1_typology = fct_relevel(state1_typology, "Checkpoint"),
+         state1_relig_shrt = factor(state1_relig_shrt),
          diff_relig = factor(diff_relig)) %>%
   rename(state1_military = state1_military_expenditure_perc_gdp_log)
 
@@ -775,6 +764,7 @@ imp_method <- mice.mat$method
 
 # logistic regression for binary vars
 imp_method[c("diff_relig")] <- "logreg"
+imp_method[c("state1_relig_shrt")] <- "polyreg"
 
 # Create imputed datasets
 model_imp.df <- mice(model.df, m = 50, predictorMatrix = pred.mat, 
@@ -806,7 +796,7 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log export_log import_log state1_polity refugees_incoming_log i.diff_relig state1_military state1_nterror_log, vce(cluster state1)
+# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity diff_pol state1_military state1_nterror_log refugees_incoming_log i.state1_relig_shrt i.diff_relig, vce(cluster state1)
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # est sto ml
@@ -849,27 +839,39 @@ ame_results.df <- ame_results.df %>%
   pivot_wider(names_from = type, values_from = value) %>%
   separate(ci, into = c("conf.low", "conf.high"), sep = ",") %>%
   mutate_at(vars(3:8), as.numeric) %>%
+  mutate(variable = case_when(
+    variable == "state1_relig_shrt" ~ "relig_muslim",
+    variable == "3.state1_relig_shrt" ~ "relig_other",
+    TRUE ~ as.character(variable)
+  )) %>%
   mutate(pstars = stars.pval(p),
          variable = fct_rev(factor(variable, 
-                                   levels = c("state1_gdp_log",
-                                              "ratio_gdp",
-                                              "state1_polity",
-                                              "refugees_incoming_log",
-                                              "diff_relig",
-                                              "state1_military",
-                                              "state1_nterror_log"),
-                                   labels = c("GDP pc (log), builder",
-                                              "GDP pc, ratio",
-                                              "Polity, builder",
-                                              "Refugees, incoming (log)",
-                                              "Different majority religion",
-                                              "Military expenditures pc (log), builder",
-                                              "Terror incidents (log), builder"))))
+                              levels = c("state1_gdp_log",
+                                         "ratio_gdp",
+                                         "state1_polity",
+                                         "diff_pol", 
+                                         "state1_military",
+                                         "state1_nterror_log",
+                                         "refugees_incoming_log",
+                                         "relig_muslim",
+                                         "relig_other",
+                                         "diff_relig"),
+                              labels = c("GDP pc (log), builder",
+                                         "GDP pc, ratio",
+                                         "Polity, builder",
+                                         "Polity, difference",
+                                         "Military expenditures pc (log), builder",
+                                         "Terror incidents (log), builder",
+                                         "Refugees, incoming (log)",
+                                         "Religion, Muslim\n[Ref.: Christian]",
+                                         "Religion, Other\n[Ref.: Christian]",
+                                         "Different religion\n[Ref.: No]"))))
 
 # Plot
 # Create coefplots
 result_mnom_ame.fig <- ame_results.df %>%
   ggplot() +
+  # not siginificant
   geom_point(data = function(x){x[!x$pstars %in% c("*" ,"**", "***"),]},
              aes(x = variable, y = coef), stat = "identity", alpha = .3) +
   geom_errorbar(data = function(x){x[!x$pstars %in% c("*" ,"**", "***"),]}, 
@@ -879,8 +881,10 @@ result_mnom_ame.fig <- ame_results.df %>%
              aes(x = variable, y = coef), stat = "identity") +
   geom_errorbar(data = function(x){x[x$pstars %in% c("*" ,"**", "***"),]}, 
                 aes(x = variable, ymin = conf.low, ymax = conf.high)) +
+  #
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(.~fac_ind_en(typology)) +
+  scale_x_discrete(drop = FALSE) + 
   ylim(-.2, .2) +
   coord_flip() +
   labs(x = "", y = "") +
@@ -970,7 +974,7 @@ ggsave(
 # Bivariate relationship
 ggsave(
   plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", 
-  width = 12, height = 10, unit = "in",
+  width = 15, height = 9, unit = "in",
   dpi = 300
 )
 
