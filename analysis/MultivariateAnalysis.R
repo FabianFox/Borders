@@ -1,11 +1,9 @@
 # Border Data: Model
 
 # Notes & Issues
-# - border.df features the case MMR/PAK, which does not share a common border
-# - monadic descriptive analysis needs updating
-# - 
-# 
-# 
+# - CoW Direct Contiguity is expanded by dyad between NGA-TCD due to aridification
+#   of lake Chad, erroneous entries - ARE-QAT, MMR-PAK - are removed
+
 
                             ###################
                             #      SETUP      #
@@ -175,9 +173,9 @@ ind_perc_region.fig <- border.df %>%
                                 "Europe", "Global distribution"))) +
   labs(x = "", y = "") +
   theme.basic +
-  theme(axis.text = element_text(size = 8),
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
-        panel.spacing.y = unit(2, "lines")) +
+  theme(axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.spacing.y = unit(5, "lines")) +
   scale_y_continuous(labels = function(x) paste0(x, "%"))
 
 # Round global distribution (regions)
@@ -253,7 +251,7 @@ border_monvars.nest <- border_monvars %>%
   mutate(
     obs = map(data, ~sum(.x$obs)),
     title = c(
-    "GDP pc, ratio",  
+    "GDP per capita (in USD), ratio",  
     # "Dyadic export (in USD), log",
     # "Dyadic import (in USD), log",
     "Dyadic refugee inflow, log",
@@ -273,7 +271,13 @@ border_monvars.nest <- border_monvars %>%
     "\nData: PolityIV (2017)"
   ),
   subtitle = paste0(subtitle_1, "\nObservations: ", obs)) %>%
-  select(-subtitle_1)
+  select(-subtitle_1) 
+
+# Custom arrange 
+border_monvars.nest <- border_monvars.nest %>%
+  mutate(order = c(2, 6, 1, 4, 5, 3)) %>%
+  arrange(order) %>%
+  select(-order)
 
 # Plot
 border_monvars.fig <- border_monvars.nest %>%
@@ -288,8 +292,8 @@ border_monvars.fig <- border_monvars.nest %>%
                         theme.basic +
                         theme(
                           plot.title = element_text(size = 10, face = "bold"),
-                          plot.caption = element_text(size = 8),
-                          axis.text = element_text(size = 8))
+                          plot.caption = element_text(size = 10),
+                          axis.text = element_text(size = 10))
                       ))
 
 # Chart for different majority religions across the border
@@ -308,8 +312,8 @@ diff_relig.fig <- border.df %>%
     x = "", y = "") +
   theme.basic +
   theme(plot.title = element_text(size = 10, face = "bold"),
-        plot.caption = element_text(size = 8),
-        axis.text = element_text(size = 8))
+        plot.caption = element_text(size = 10),
+        axis.text = element_text(size = 10))
 
 # Put figures together with patchwork
 border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + diff_relig.fig
@@ -957,14 +961,16 @@ imp_ame.df <- imp_ame.df %>%
 # Figure 2
 # Relative distribution of border infrastructure
 ggsave(
-  plot = ind_perc_region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", width = 8, height = 6, unit = "in",
+  plot = ind_perc_region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", 
+  width = 8, height = 8, unit = "in",
   dpi = 300
 )
 
 # Figure 3
 # Bivariate relationship
 ggsave(
-  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", width = 12, height = 10, unit = "in",
+  plot = border_monvars_pwork.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Bivariate Relationship.tiff", 
+  width = 12, height = 10, unit = "in",
   dpi = 300
 )
 
