@@ -303,7 +303,7 @@ border.df <- border.df %>%
   select(-visa.available)
 
 # COW: World Religion Data
-# Year: 2017 
+# Year: 2010
 # retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
 ## -------------------------------------------------------------------------- ##
 relig.df <- import("https://correlatesofwar.org/data-sets/world-religion-data/wrp-national-data-1/@@download/file/WRP_national.csv", format = ",") %>%
