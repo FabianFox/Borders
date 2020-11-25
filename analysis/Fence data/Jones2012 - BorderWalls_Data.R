@@ -13,3 +13,6 @@ barriers.bw <- import("./data/border data/Jones 2012 - Barriers_p10.xlsx", range
          state2 = countrycode(country2, "country.name", "iso3c"),
          indicator = "fortified",
          source = "Reece (2012)")
+
+# Save
+export(barriers.bw, "./data/border data/Jones 2012.rds")
