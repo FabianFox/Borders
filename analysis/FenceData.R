@@ -8,8 +8,8 @@
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
-if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, countrycode, tabulizer, qdap, rvest, haven, docxtractr)
+if (!require("xfun")) install.packages("xfun")
+pkg_attach2("tidyverse", "rio", "countrycode", "tabulizer", "qdap", "rvest", "haven", "docxtractr")
 
 # Existing data sets
 ### ------------------------------------------------------------------------ ###
@@ -21,6 +21,7 @@ p_load(tidyverse, rio, countrycode, tabulizer, qdap, rvest, haven, docxtractr)
 # - linnell2013 : Linnell et al. (2013) Border Security Fencing and Wildlife
 # - avdan2019 : Avdan (2019) Visas and Walls
 # - barriers.gsc : GlobalSecurity.org (https://www.globalsecurity.org/military/world/walls.htm)
+# - Benedicto2020 : Benedicto et al. (2020) (https://www.tni.org/files/publication-downloads/informe46_walledwolrd_centredelas_tni_stopwapenhandel_stopthewall_eng_def.pdf)
 
 # Jones (2012): Border Walls
 ### ------------------------------------------------------------------------ ###
@@ -88,18 +89,15 @@ for (i in seq_along(name.dy)) {
 which(lengths(name.dy) < 2) 
 
 # Edit those borders that still do not contain valid entries.
-name.dy[[3]][2] <- "Malaysia"
-name.dy[[5]][2] <- "Morocco"
 name.dy[[6]][2] <- "China"
-name.dy[[13]][2] <- "Morocco"
-name.dy[[14]][2] <- "Serbia"
-name.dy[[18]][2] <- "Pakistan"
-name.dy[[19]][2] <- "Pakistan"
-name.dy[[21]] <- c("North Korea", "South Korea")
-name.dy[[26]] <- c("Saudi Arabia", "Yemen")
+name.dy[[16]][2] <- "Serbia"
+name.dy[[20]][2] <- "Pakistan"
+name.dy[[21]][2] <- "Pakistan"
+name.dy[[23]] <- c("North Korea", "South Korea")
+name.dy[[30]] <- c("Saudi Arabia", "Yemen")
 
 # United States is coded in the wrong direction
-name.dy[[34]] <- c("United States", "Mexico")
+name.dy[[39]] <- c("United States", "Mexico")
 
 # Add dyad identifier to the table and turn into iso3c-code
 barriers.wiki <- barriers.wiki %>%
@@ -293,14 +291,29 @@ barriers.gsec <- read_html("https://www.globalsecurity.org/military/world/walls.
   .[[1]] %>%
   set_names(c("state1", "barrier", "begin", "end"))
 
+# Benedicto et al. (2020)
+# 
+# Data from: 
+# Benedicto, Ainho Ruiz; Akkerman, Mark & Pere Brunet (2020) A Walled World. Towards 
+# A Global Apartheid, Centre Delàs Report 46. URL: https://www.tni.org/files/publication-downloads/informe46_walledwolrd_centredelas_tni_stopwapenhandel_stopthewall_eng_def.pdf
+### ------------------------------------------------------------------------ ###
+# Data is directed
+# Vars:
+# state1: initiating country
+# state2: affected country
+# year: initiated in year 
+
+benedicto2020.df <- import("./data/border data/Benedicto et al 2020.rds") %>%
+  mutate(source = "Benedicto et al. (2020)")
+
 # Put the individual data sets into a list.df
 ### ------------------------------------------------------------------------ ###
 
 fence.df <- tibble(
   source = c("Avdan2019", "Hassner&Wittenberg2015", "Jellissen&Gottheil2013",
-             "LinnellEtAl2013", "Jones2012", "Wikipedia2019", "GlobalSecurity2019"),
+             "LinnellEtAl2013", "Jones2012", "Wikipedia2019", "GlobalSecurity2019", "BenedictoEtAl2020"),
   data = list(avdan2019.df, hassner2015, jellissen2013.df, linnell2013.df, jones2012.df,
-           barriers.wiki, barriers.gsc))
+           barriers.wiki, barriers.gsc, benedicto2020.df))
 
 # Save the data
 ### ------------------------------------------------------------------------ ###
