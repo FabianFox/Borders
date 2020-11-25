@@ -24,3 +24,6 @@ barriers.hw <- read_dta("./data/border data/barrierstoentry.dta") %>%
                               custom_match = custom),
          indicator = "fortified",
          source = "Hassner&Wittenberg (2013)")
+
+# Export
+export(barriers.hw, "./data/border data/Hassner & Wittenberg 2015.rds")
