@@ -42,3 +42,6 @@ barriers.ln <- barriers.ln %>%
 # India (Kashmir) = IND; remove Transnistria
 barriers.ln[41, "state2"] <- "IND"
 barriers.ln <- barriers.ln[-13,]
+
+# Export
+export(barriers.ln, "./data/border data/Linnell et al. 2016.rds")
