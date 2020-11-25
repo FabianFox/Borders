@@ -9,6 +9,7 @@
 # - barriers.jg : Jellissen & Gottheil (2013) On the utility of security fences along international borders
 # - barriers.ln : Linnell et al. (2013) Border Security Fencing and Wildlife
 # - barriers.av : Avdan (2019) Visas and Walls
+# - barriers.bap : Benedicto et al. (2020) A Walled World
 
 # Load/install packages
 ### ------------------------------------------------------------------------ ###
@@ -25,7 +26,7 @@ vars <- c("state1", "state2", "year", "indicator", "source")
 
 # Reece (2012)
 # generated in: "Jones2012 - BorderWalls_Data.R"
-barriers.bw.join <- barriers.bw %>%
+barriers.bw.join <- import("./data/border data/Jones 2012.rds") %>%
   select(vars) %>%
   mutate(year = as.character(year)) 
 
@@ -36,7 +37,7 @@ barriers.wiki.join <- readRDS("./data/border data/barriers.wiki.RDS") %>%
 
 # Hassner & Wittenberg (2015)
 # generated in: "Hassner&Wittenberg2015 - BarriersToEntry_Data.R"
-barriers.hw.join <- barriers.hw %>%
+barriers.hw.join <- import("./data/border data/Hassner & Wittenberg 2015.rds") %>%
   select(vars) %>%
   mutate(year = as.character(year))
 
@@ -47,7 +48,7 @@ barriers.jg.join <- readRDS("./data/border data/Jellissen & Gottheil 2013.rds") 
 
 # Linnell et al. (2013)
 # generated in: "Linnell2013 - BorderSecurityFencingAndWildlife.R"
-barriers.ln.join <- barriers.ln %>%
+barriers.ln.join <-  import("./data/border data/Linnell et al. 2016.rds") %>%
   select(vars)
   
 # Avdan (2019)
@@ -77,3 +78,5 @@ barriers.df.join <- barriers.df %>%
 rm(list = setdiff(ls(), 
                   c(ls()[which(str_detect(ls(), "join") == TRUE)], "barriers.df")))
 
+# Export
+export(barriers.df, "./analysis/Fence data/barriers_df.rds")
