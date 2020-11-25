@@ -2,10 +2,17 @@
 .Rhistory
 .RData
 .Ruserdata
-data/p4v2016.sav
-FRAN-reports/
 output/
 desktop.ini
+.httr-oauth
+FRAN-reports/
+data/p4v2016.sav
 data/globalterrorismdb_0919dist.xlsx
 data/gtd_prepared.rds
-.httr-oauth
+data/FreedomHouseDemocracy2017.RDS
+data/Global_Transnational_Mobility_dataset_v1.0.csv
+data/Global_Transnational_Mobility_dataset_v1.0.xlsx
+data/VWP*
+data/international-tourist-arrivals-by-world-region.csv
+data/border data/Benedicto et al. 2020 - A Walled World.xlsx
+supplementary data/
