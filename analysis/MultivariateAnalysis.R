@@ -343,7 +343,7 @@ diff_relig.fig <- border.df %>%
         axis.text = element_text(size = 10))
 
 # Put figures together with patchwork
-border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + diff_relig.fig + relig.fig
+border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + relig.fig
 
 
 #                                 DYADIC 
@@ -438,7 +438,7 @@ iv <- c(
   "state1_polity",
   "refugees_incoming_log",
   "state1_nterror_log",
-  "diff_relig",
+  "state1_relig_shrt",
   "state1_military_expenditure_perc_gdp_log",
   # (A2) Neighbour characteristics (bivariate)
 
@@ -450,8 +450,7 @@ iv <- c(
   state1_military_expenditure_perc_gdp_log +
   state1_nterror_log + 
   refugees_incoming_log +
-  state1_relig_shrt +
-  diff_relig"
+  state1_relig_shrt"
   
   # (B2) Dyad variables
 
@@ -623,7 +622,7 @@ result_mnom_ame.df <- tibble(
   category = model_mnom.df$lev,
   model = list(model_mnom.df)) %>%
   mutate(estimate = map2(.x = model, .y = category, 
-                    ~summary(margins(model = .x, category = .y)))) %>%
+                    ~summary(margins(model = .x, category = .y,)))) %>% # also useful: change = "sd"
   select(-model) %>%
   unnest(cols = estimate) %>%
   select(1:3) %>%
@@ -686,7 +685,7 @@ mnom_ame.fig <- ggplot(data = result_mnom_ame.df %>%
   theme_minimal()
 
 # ggeffects (see: https://strengejacke.github.io/ggeffects/)
-result_mnom.gg <- ggeffect(model_mnom.df, terms = "ratio_gdp") %>%
+result_mnom.gg <- ggeffect(model_mnom.df, terms = "diff_relig") %>%
   mutate(response.level = if_else(response.level == "X.No.man.s.land.", 
                                   "'No man's land'", response.level),
          response.level = factor(response.level, 
@@ -734,11 +733,10 @@ vars <- str_replace_all(paste0("state1_typology|", iv[[10]]), "[ +\n ]+", "|")
 # Note: state1: clustervar
 model.df <- border.df %>%
   select(matches(vars), state1) %>%
-  select(-c(1:5, "absdiff_pol", "diff_relig_shrt")) %>%
+  select(-c(1:5, "absdiff_pol")) %>%
   mutate(state1_typology = fac_ind_en(state1_typology),
          state1_typology = fct_relevel(state1_typology, "Checkpoint"),
-         state1_relig_shrt = factor(state1_relig_shrt),
-         diff_relig = factor(diff_relig)) %>%
+         state1_relig_shrt = factor(state1_relig_shrt)) %>%
   rename(state1_military = state1_military_expenditure_perc_gdp_log)
 
 # Distribution of NA
@@ -763,7 +761,7 @@ pred.mat[, c("state1")] <- 0
 imp_method <- mice.mat$method
 
 # logistic regression for binary vars
-imp_method[c("diff_relig")] <- "logreg"
+# excluded: imp_method[c("diff_relig")] <- "logreg"
 imp_method[c("state1_relig_shrt")] <- "polyreg"
 
 # Create imputed datasets
@@ -796,7 +794,7 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity diff_pol state1_military state1_nterror_log refugees_incoming_log i.state1_relig_shrt i.diff_relig, vce(cluster state1)
+# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity diff_pol state1_military state1_nterror_log refugees_incoming_log i.state1_relig_shrt, vce(cluster state1)
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # est sto ml
@@ -854,8 +852,7 @@ ame_results.df <- ame_results.df %>%
                                          "state1_nterror_log",
                                          "refugees_incoming_log",
                                          "relig_muslim",
-                                         "relig_other",
-                                         "diff_relig"),
+                                         "relig_other"),
                               labels = c("GDP pc (log), builder",
                                          "GDP pc, ratio",
                                          "Polity, builder",
@@ -864,8 +861,7 @@ ame_results.df <- ame_results.df %>%
                                          "Terror incidents (log), builder",
                                          "Refugees, incoming (log)",
                                          "Religion, Muslim\n[Ref.: Christian]",
-                                         "Religion, Other\n[Ref.: Christian]",
-                                         "Different religion\n[Ref.: No]"))))
+                                         "Religion, Other\n[Ref.: Christian]"))))
 
 # Plot
 # Create coefplots
@@ -888,8 +884,12 @@ result_mnom_ame.fig <- ame_results.df %>%
   ylim(-.2, .2) +
   coord_flip() +
   labs(x = "", y = "") +
-  theme_minimal()
-
+  theme.basic +
+  theme(plot.title = element_text(size = 10, face = "bold"),
+        plot.caption = element_text(size = 10),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 0, hjust = 0.5),
+        panel.spacing.x = unit(2, "lines"))
 
                           ##########################
                           #   MICE: MULTINOM IN R  #
@@ -898,7 +898,8 @@ result_mnom_ame.fig <- ame_results.df %>%
 # adopted for mice from: https://www.andrewheiss.com/blog/2018/03/07/amelia-tidy-melding/
 
 # Tidy dataframe with nested imputations
-imp_nest.df <- complete(model_imp.df, include = F, action = "long") %>%
+imp_nest.df <- import("./output/imputed_data.rds") %>%
+  complete(., include = F, action = "long") %>%
   rename(imp_no = `.imp`) %>%
   group_by(imp_no) %>%
   nest() %>%
@@ -921,7 +922,7 @@ imp_nest.df <- imp_nest.df %>%
 # Apply margins-command
 imp_nest.df <- imp_nest.df %>%
   mutate(ame = pmap(list(model, category, data),
-                    ~summary(margins(model = ..1, category = ..2, data = ..3)) %>%
+                    ~summary(margins(model = ..1, category = ..2, data = ..3,  change = "sd")) %>%
                       select(factor, AME)))
 
 # Retain only AMEs and prepare for combining using Amelia::mi.meld
@@ -933,15 +934,14 @@ imp_ame.df <- imp_nest.df %>%
   nest()
 
 # Combine with adjusted mi.meld
-am.m <- nrow(q)
-ones <- matrix(1, nrow = 1, ncol = am.m)
-imp.q <- (ones %*% q)/am.m
+# ---------------------------------------------------------------------------- #
+# Code adopted from Amelia::mi.meld
 
 # Wrap Amelia::mi.meld into a function
 # Note: We only have coefficients not SE (not yet supported by margins)
 meld_coef_fun <- function(x){
   # data
-  df <- imp_ame.df$data[[4]] %>% 
+  df <- x %>% 
     select(-1)
   # nrow
   am.m <- nrow(df)
@@ -957,6 +957,29 @@ meld_coef_fun <- function(x){
 imp_ame.df <- imp_ame.df %>%
   mutate(imp_ame = map(.x = data, 
                        ~meld_coef_fun(.x)))
+
+
+# Computations for the results section
+# ---------------------------------------------------------------------------- #
+# change from mean(mtcars$hp) +/- sd(mtcars$hp)
+ame_sd.df <- imp_ame.df %>%
+  unnest(imp_ame) 
+
+ame_sd.df %>%
+  select(category)
+
+# Mean, SD, Mean +/- 1 SD
+# Continuous predictors
+pred <- colnames(ame_sd.df)[c(3:9)]
+pred[5] <- "state1_military_expenditure_perc_gdp_log"
+
+mean_sd.df <- border.df %>%
+  select(all_of(pred)) %>%
+  psych::describe() %>%
+  select(mean, sd) %>%
+  rownames_to_column(var = "variable") %>%
+  mutate(from = mean - sd,
+         to = mean + sd)
 
                           ##########################
                           #       EXPORT FIGS      #
@@ -981,7 +1004,8 @@ ggsave(
 # Figure 4
 # Multinomial regression (AME)
 ggsave(
-  plot = result_mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Multinomial Regression - AME.tiff", width = 14, height = 8, unit = "in",
+  plot = result_mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Multinomial Regression - AME.tiff", 
+  width = 14, height = 8.5, unit = "in",
   dpi = 300
 )
 
