@@ -5,7 +5,8 @@
 if (!require("xfun")) install.packages("xfun")
 pkg_attach2("tidyverse", "janitor", "rio")
 
-# Indicator
+# Load indicator
+## -------------------------------------------------------------------------- ##
 indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
                        sheet = 1, na = "NA") %>%
   as_tibble() %>%
@@ -19,6 +20,7 @@ indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTy
   arrange(state1, typology)
 
 # Add year of border installation
+## -------------------------------------------------------------------------- ##
 # Data from BordersJoin.R
 barriers.df <- import("./analysis/Fence data/barriers_df.rds")
 
@@ -40,12 +42,13 @@ fortified_borders.df <- indicator.df %>%
   left_join(list.fences, by = c("state1", "state2")) %>%
   as_tibble() 
 
-# Determine preference regarding source of construction year (right to left)
+# Determine preference regarding source of construction year 
+# from left - Wikipedia - to right - Avdan, (2019)
 fortified_borders.df <- fortified_borders.df %>%
   select(state1, state2, typology, Wikipedia, `Benedicto et al. (2020)`, `Jellissen&Gottheil (2013)`,
          `Hassner&Wittenberg (2013)`, `Reece (2012)`, `Avdan (2019)`)
 
-# Create a column that indicates whether a valid year exist
+# Fill missing values by preference
 # See: https://stackoverflow.com/questions/55671205/fill-missing-values-rowwise-right-left
 built <- t(zoo::na.locf(t(fortified_borders.df[, c(4:9)])))[,6]
 
@@ -53,7 +56,7 @@ built <- t(zoo::na.locf(t(fortified_borders.df[, c(4:9)])))[,6]
 fortified_borders.df <- fortified_borders.df %>%
   mutate(built = built) 
 
-# Slice to preferred source data
+# Use preferred source when multiple entries exist
 fortified_borders.df <- fortified_borders.df %>%
   group_by(state1, state2) %>%
   filter(row_number() == 1) %>%
@@ -63,6 +66,7 @@ fortified_borders.df <- fortified_borders.df %>%
 rm(list = setdiff(ls(), "fortified_borders.df"))
 
 # Fill missing values
+## -------------------------------------------------------------------------- ##
 # Source: https://www.buzzfeednews.com/article/karlazabludovsky/argentina-separation-anxiety
 fortified_borders.df[fortified_borders.df$state1 == "ARG" & fortified_borders.df$state2 == "PRY", "built"] <- "2014"
 # Source: Smolnik (2016) "Secessionist Rule Protracted Conflict and Configurations of Non-state Authority", Campus: Frankfurt aM.
@@ -105,7 +109,10 @@ fortified_borders.df[fortified_borders.df$state1 == "CYP" & fortified_borders.df
 fortified_borders.df[fortified_borders.df$state1 == "DNK" & fortified_borders.df$state2 == "DEU", "built"] <- "2019" # Swine fever
 # Source: http://www.ieee.es/en/Galerias/fichero/docs_opinion/2016/DIEEEO60-2016_Muros_Fronterizos_America_FFurlan.pdf
 fortified_borders.df[fortified_borders.df$state1 == "DOM" & fortified_borders.df$state2 == "HTI", "built"] <- "2014" 
-
+# Source: https://www.medias24.com/MAROC/INTERNATIONAL/166749-La-fin-de-l-UMA-Murs-a-la-frontiere-Maroc-Algerie-tranchees-sur-les-frontieres-avec-la-Tunisie-et-la-Libye.html
+fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "LBY", "built"] <- "2015" 
+# Source: https://fanack.com/algeria/history-past-to-present/is-algeria-north-africa-new-migration-hub-sub-saharan-migrants/
+fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "MLI", "built"] <- "2012" 
 
 
 
