@@ -113,6 +113,17 @@ fortified_borders.df[fortified_borders.df$state1 == "DOM" & fortified_borders.df
 fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "LBY", "built"] <- "2015" 
 # Source: https://fanack.com/algeria/history-past-to-present/is-algeria-north-africa-new-migration-hub-sub-saharan-migrants/
 fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "MLI", "built"] <- "2012" 
+# Source: https://mipa.institute/wp-content/uploads/2020/03/Said-Saddiki-Article-ENGLISH.pdf
+fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "MRT", "built"] <- "2013" # estimate
+# Source: Frontex (2016) “Africa-Frontex Intelligence Community Joint Report 2016”, p. 13
+fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "NER", "built"] <- "2016" # estimate
+# Source: •	Hanlon & Herbert (2015) “Border security challenges in the Grand Maghreb”, Washington, DC: Peaceworks No. 109 (p. 34) 
+fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "TUN", "built"] <- "2015" # estimate
+
+
+
+
+
 
 
 
