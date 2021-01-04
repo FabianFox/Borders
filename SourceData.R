@@ -55,8 +55,11 @@ contdird <- contdird %>%
 # - Polity IV [2017]
 # - Visa Network Data [2010]
 # - COW: World Religion [2010]
-# - COW: Militarized Interstate Disputes (v4.3) 
-
+# - COW: Militarized Interstate Disputes (v4.3) [2010]
+# - START: Global Terrorism Database [2017]
+# - World Refugee Dataset [2015]
+# - CEPII: GeoDist 
+# - CIA World Factbook Data
 
 # Join International Border Agreement Dataset (Owsiak et al. 2018)
 # Latest observation: 2001
@@ -487,7 +490,56 @@ border.df <- border.df %>%
          refugees_outgoing_agg_log = log1p(refugees_outgoing_agg),
          refugees_outgoing_pc_log = log1p(refugees_outgoing_pc),
          refugees_outgoing_agg_pc_log = log1p(refugees_outgoing_agg_pc))
+
+# CEPII GeoDist
+# Variable: 
+# Year: 
+## -------------------------------------------------------------------------- ##
+# retrieved from: Mayer & Zignago (2011), Link: http://www.cepii.fr/CEPII/en/bdd_modele/presentation.asp?id=6
+
+# Dyadic version
+# missing in dist.df - "COD" "LIE" "MCO" "MNE" "ROU" "SRB" "SSD" "TLS" "XKX"
+dist.df <- import("./data/dist_cepii.xls") %>%
+  filter(iso_o != iso_d) %>%
+  select(state1 = iso_o, state2 = iso_d, colony, comlang_off) %>%
+  distinct(state1, state2, .keep_all = TRUE)
+
+# Join to border.df
+border.df <- border.df %>%
+  left_join(dist.df)
+
+# Monadic version of CEPII GeoDist
+# missing in geo.df - "COD" "LIE" "MCO" "MNE" "ROU" "SRB" "SSD" "TLS" "XKX"
+geo.df <- import("./data/geo_cepii.xls") %>%
+  select(state1 = iso3, starts_with(c("langoff", "colonizer")), state1_area = area) %>%
+  mutate(across(everything(), ~na_if(., y = "."))) %>%
+  unite("state1_langoff", starts_with("langoff"), sep = ", ", na.rm = TRUE, remove = TRUE) %>%
+  unite("state1_colony", starts_with("colonizer"), sep = ", ", na.rm = TRUE, remove = TRUE)
+
+# Add missing countries via CIA World Factbook
+geo.df <- geo.df %>%
+  add_row(state1 = c("COD", "LIE", "MCO", "MNE", "ROU", "SRB", "SSD", "TLS", "XKX"),
+          state1_langoff = c("French", "German", "French", "Montenegrin", 
+                             "Romanian", "Serbian", "English", "Tetun, Portuguese", "Albanian, Serbian"),
+          state1_colony = c("BEL", "", "", "TUR", "RUS, TUR", "", "GBR, SDN", "PRT, IDN", "TUR, SRB"),
+          state1_area = c(2344858, 160, 2, 13812, 238391, 77474, 644329, 14874, 10887)) %>%
+  distinct(state1, .keep_all = TRUE)
+
+# Join to border.df
+border.df <- border.df %>%
+  left_join(y = geo.df)
+
+# Add neighbour data
+swap.df <- geo.df %>%
+  rename_with(~str_replace(., "state1", "state2"), everything())
+
+# Join to border.df 
+border.df <- border.df %>%
+  left_join(y = swap.df)
          
+# Use monadic data (geo.df) to replace missing values in dist.df
+# -----------------------------------------------------------------------------
+
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
 # - Length of shared borders
