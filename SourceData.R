@@ -492,8 +492,7 @@ border.df <- border.df %>%
          refugees_outgoing_agg_pc_log = log1p(refugees_outgoing_agg_pc))
 
 # CEPII GeoDist
-# Variable: 
-# Year: 
+# Variable: Common language, colonial ties, area
 ## -------------------------------------------------------------------------- ##
 # retrieved from: Mayer & Zignago (2011), Link: http://www.cepii.fr/CEPII/en/bdd_modele/presentation.asp?id=6
 
@@ -513,14 +512,14 @@ border.df <- border.df %>%
 geo.df <- import("./data/geo_cepii.xls") %>%
   select(state1 = iso3, starts_with(c("langoff", "colonizer")), state1_area = area) %>%
   mutate(across(everything(), ~na_if(., y = "."))) %>%
-  unite("state1_langoff", starts_with("langoff"), sep = ", ", na.rm = TRUE, remove = TRUE) %>%
-  unite("state1_colony", starts_with("colonizer"), sep = ", ", na.rm = TRUE, remove = TRUE)
+  unite("state1_langoff", starts_with("langoff"), sep = "|", na.rm = TRUE, remove = TRUE) %>%
+  unite("state1_colony", starts_with("colonizer"), sep = "|", na.rm = TRUE, remove = TRUE)
 
 # Add missing countries via CIA World Factbook
 geo.df <- geo.df %>%
   add_row(state1 = c("COD", "LIE", "MCO", "MNE", "ROU", "SRB", "SSD", "TLS", "XKX"),
           state1_langoff = c("French", "German", "French", "Montenegrin", 
-                             "Romanian", "Serbian", "English", "Tetun, Portuguese", "Albanian, Serbian"),
+                             "Romanian", "Serbian", "English", "Tetun|Portuguese", "Albanian|Serbian"),
           state1_colony = c("BEL", "", "", "TUR", "RUS, TUR", "", "GBR, SDN", "PRT, IDN", "TUR, SRB"),
           state1_area = c(2344858, 160, 2, 13812, 238391, 77474, 644329, 14874, 10887)) %>%
   distinct(state1, .keep_all = TRUE)
@@ -538,7 +537,17 @@ border.df <- border.df %>%
   left_join(y = swap.df)
          
 # Use monadic data (geo.df) to replace missing values in dist.df
-# -----------------------------------------------------------------------------
+border.df <- border.df %>%
+  mutate(
+    colony = case_when(
+      is.na(colony) & str_detect(paste(state1_colony, state2_colony, sep = ", "), 
+                                 paste(state1, state2, sep = "|")) == TRUE ~ 1,
+      !is.na(colony) ~ colony,
+      TRUE ~ 0),
+    comlang_off = case_when(
+      is.na(comlang_off) & str_detect(state1_langoff, state2_langoff) == TRUE ~ 1,
+      !is.na(comlang_off) ~ comlang_off,
+      TRUE ~ 0))
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
