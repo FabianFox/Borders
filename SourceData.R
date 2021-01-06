@@ -120,6 +120,12 @@ border.df <- contdird %>%
 border.df <- border.df %>%
   mutate_at(vars(6:17), list("log" = log1p))
 
+# Create additional variables (GDP ratio, population in millions)
+border.df <- border.df %>%
+  mutate(ratio_gdp = state1_gdp / state2_gdp,
+         state1_pop_in_million = state1_pop / 1000000,
+         state2_pop_in_million = state2_pop / 1000000)
+
 # COW: Trade v4.0
 # Variable: flow1, flow2
 # Year: 2014
