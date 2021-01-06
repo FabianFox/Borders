@@ -549,14 +549,14 @@ border.df <- border.df %>%
       !is.na(comlang_off) ~ comlang_off,
       TRUE ~ 0))
 
+# Remove auxiliary columns
+border.df <- border.df %>%
+  select(-c(state1_langoff, state1_colony, state2_langoff, state2_colony))
+
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
 # - Length of shared borders
 # - Terrain description  
-
-# Issues: 
-# - States are stored in their respective regional folder 
-# - Information is a character string
 
 # (1) Get all files (location on hard disk)
 # List the region folders who store country json-files
@@ -749,7 +749,7 @@ swap.df <- geo.df %>%
     stateb = statea
   )
 
-# (2) Bind back together and compute number of shared ethnicities across border
+# (2) Bind back together
 geo.df <- geo.df %>%
   bind_rows(., swap.df) %>%
   mutate(dyadName = paste(statea, stateb, sep = "_")) %>%
@@ -771,3 +771,6 @@ border.df <- border.df %>%
 # Keep only the final data
 ## -------------------------------------------------------------------------- ##
 rm(list = setdiff(ls(), "border.df"))
+
+# Export
+export(border.df, "./output/border.rds")
