@@ -199,17 +199,32 @@ global_dist.df %>%
                       across(where(is.numeric), sum),
                       across(where(is.character), ~"Total")))
 
-#                                  MONADIC
-### ------------------------------------------------------------------------ ###
 
-# Economy
-# GDP, Polity IV, military capacity
-# & main religion by typology
-# --------------------------------- #
+#                        CREATE INDEPENDENT VARIABLES
+### ------------------------------------------------------------------------ ###
+# Limit data to variables used in the analysis
+border.df <- border.df %>%
+  select(state1, state2, state1_typology, 
+         # Economy
+         state1_gdp, state2_gdp, state1_gdp_log, state2_gdp_log, ratio_gdp,
+         # Polity
+         state1_polity, state2_polity, diff_pol,
+         # Security
+         state1_military_expenditure_perc_gdp, state2_military_expenditure_perc_gdp,
+         state1_nterror_log, state2_nterror_log,
+         # Culture
+         state1_relig_shrt, state2_relig_shrt, diff_relig, diff_relig_shrt,
+         colony, comlang_off,
+         # Controls
+         state1_pop, state2_pop, state1_pop_log, state2_pop_log,
+         state1_pop_in_million, state2_pop_in_million,
+         refugees_incoming_log, refugees_incoming_pc)
+
+
+#                   DESCRIPTIVE STATISTICS & FIGURES
+### ------------------------------------------------------------------------ ###
 # Summary stats
 border_monvars <- border.df %>%
-  mutate(state1_pop_per_million = state1_pop / 1000000,
-         ratio_gdp = state1_gdp / state2_gdp) %>%
   group_by(state1_typology) %>%
   summarise_at(vars(
     # control
@@ -348,55 +363,6 @@ diff_relig.fig <- border.df %>%
 border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + relig.fig
 
 
-#                                 DYADIC 
-#
-### ------------------------------------------------------------------------ ###
-# Create dyadic variables
-# On transformations, see Fox & Weisberg: CAR, p. 131f. 
-border.df <- border.df %>%
-  mutate(
-    # economy
-    diff_gdp = state1_gdp - state2_gdp,
-    logdiff_gdp = state1_gdp_log - state2_gdp_log,
-    absdiff_gdp = abs(state1_gdp - state2_gdp),
-    ratio_gdp = state1_gdp / state2_gdp,
-    
-    # trade
-    log_diff_trade = export_log - import_log,
-    
-    # politics
-    # diff_pol = state1_polity - state2_polity,
-    absdiff_pol = abs(state1_polity - state2_polity),
-    
-    # refugee flows
-    diff_refugees = refugees_outgoing - refugees_incoming,
-    logdiff_refugees = refugees_outgoing_log - refugees_incoming_log,
-    
-    # security
-    absdiff_nkill = abs(state1_death_toll - state2_death_toll),
-    # for transformation, see Fox & Weisberg: CAR, p. 131f.
-    diff_military_expenditure_pc = state1_military_expenditure_perc_gdp - state2_military_expenditure_perc_gdp,
-    logdiff_military_expenditure_pc = state1_military_expenditure_perc_gdp_log - state2_military_expenditure_perc_gdp_log,
-    absdiff_military_expenditure_pc = state1_military_expenditure_perc_gdp - state2_military_expenditure_perc_gdp,
-    
-    diff_military_pers_pc = state1_military_pers_pc - state2_military_pers_pc,
-    logdiff_military_pers_pc = state1_military_pers_pc_log - state2_military_pers_pc_log,
-    absdiff_military_pers_pc = abs(state1_military_pers_pc - state2_military_pers_pc))
-
-# Summarise by group
-border_dyadvars <- border.df %>%
-  group_by(state1_typology) %>%
-  summarise(
-    # economy
-    neighbour_absdiff_gdp_median = median(absdiff_GDP, na.rm = TRUE),
-    # politics
-    neighbour_absdiff_polity_median = median(absdiff_Polity, na.rm = TRUE),
-    # security
-    neigbour_absdiff_deathtoll3y_median = median(absdiff_death_toll_3yrs, na.rm = TRUE),
-    neigbour_absdiff_militaryexp_median = median(absdiff_military_expenditure_pc, na.rm = TRUE),
-    neighbour_absdiff_militarypers_median = median(absdiff_military_pers_pc, na.rm = TRUE)
-    )
-
                           ##########################
                           #       REGRESSION       #
                           ##########################
@@ -404,24 +370,22 @@ border_dyadvars <- border.df %>%
 # Approach
 # Bivariate
 # (A)  Bivariate regression
-# Multivariate
 # (B1) Full model
-# (B2) More dyad variables
-# (C)  Combination of border typology, i.e. fortified_fortified...
 
-# Note:
-
+# Notes
 # Logit models:
 # Fitted probabilities between 0 and 1 occurred: 
 # - Landmark ~ Polity (https://stats.stackexchange.com/questions/336424/issue-with-complete-separation-in-logistic-regression-in-r)
 
-# Multinomial regression
+# Multinomial regression:
 # - The measure for military disputes behaves badly because several categories
 #   are not involved in any disputes (disp_from_2000_to_2010)
 
+# Prepare models
+### ------------------------------------------------------------------------ ###
 # Create dummy variables of typology
 border.df <- border.df %>%
-  sjmisc::to_dummy(state1_typology, state2_typology, suffix = "label") %>%
+  sjmisc::to_dummy(state1_typology, suffix = "label") %>%
   bind_cols(border.df) %>%
   rename_at(vars(contains("state1_typology_")), list(~make_clean_names(.)))
 
@@ -432,33 +396,31 @@ dv <- c("state1_typology_frontier_border", "state1_typology_landmark_border",
 # Models
 # Create model formula
 iv <- c(
-  # (A1) Builder characteristics (bivariate)
+  # Bivariate
   "state1_gdp_log",
   "ratio_gdp",
-  "export_log",
-  "import_log",
   "state1_polity",
-  "refugees_incoming_log",
+  "diff_pol", 
+  "state1_military_expenditure_perc_gdp",
   "state1_nterror_log",
+  "refugees_incoming_log",
   "state1_relig_shrt",
-  "state1_military_expenditure_perc_gdp_log",
-  # (A2) Neighbour characteristics (bivariate)
+  "diff_relig_shrt",
+  "colony", 
+  "comlang_off",
 
-  # (B1) Full model
+  # Full model
   "state1_gdp_log +
   ratio_gdp +
   state1_polity +
-  diff_pol +
-  state1_military_expenditure_perc_gdp_log +
-  state1_nterror_log + 
+  diff_pol + 
+  state1_military_expenditure_perc_gdp +
+  state1_nterror_log +
   refugees_incoming_log +
-  state1_relig_shrt"
-  
-  # (B2) Dyad variables
-
-  # (C)
-  
-  # (D)
+  state1_relig_shrt +
+  diff_relig_shrt +
+  colony +
+  comlang_off"
   )
 
 # Create model dataframe
@@ -494,15 +456,15 @@ result_sd.df <- result_glm.df %>%
          
 # Results: Model - bivariate
 ### ------------------------------------------------------------------------ ###
-# Filter to model A
-result_bivariate_A.df <- result_ame.df %>%
+# Filter to bivariate relations
+result_bivariate.df <- result_ame.df %>%
   filter(!(str_detect(iv, "[+]"))) %>%
   unnest(model) %>%
   group_by(dv) %>%
   nest()
 
 # Create coefplots
-result_bivariate_A.df <- result_bivariate_A.df %>%
+result_bivariate.df <- result_bivariate.df %>%
   mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
                         geom_point(aes(x = factor, y = AME), stat = "identity") +
                         geom_errorbar(aes(x = factor, 
@@ -519,24 +481,19 @@ result_bivariate_A.df <- result_bivariate_A.df %>%
   ))
 
 # Display all coefplots
-bivariate_A.fig <- wrap_plots(result_bivariate_A.df$plots)
+bivariate.fig <- wrap_plots(result_bivariate.df$plots)
 
-# Results: Model A2 'neighbour effects'
+# Full model
 ### ------------------------------------------------------------------------ ###
-
-# /
-
-# Results B: Full model
-### ------------------------------------------------------------------------ ###
-# Filter to model A1
-result_B.df <- result_ame.df %>%
+# Filter to multivariate model
+result_full.df <- result_ame.df %>%
   filter(str_detect(iv, "[+]")) %>%
   unnest(model) %>%
   group_by(dv) %>%
   nest()
 
 # Create coefplots
-result_B.df <- result_B.df %>%
+result_full.df <- result_full.df %>%
   mutate(plots = map2(.x = data, .y = fac_ind_dv(dv), ~ggplot(data = .x) +
                         geom_point(aes(x = factor, y = AME), stat = "identity") +
                         geom_errorbar(aes(x = factor, 
@@ -544,7 +501,7 @@ result_B.df <- result_B.df %>%
                                           ymax = AME + (SE * qnorm((1-0.95)/2))
                         )) +
                         geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
-                        ylim(-.5, .5) +
+                        ylim(-1, 1) +
                         coord_flip() +
                         labs(
                           title = .y,
@@ -553,7 +510,7 @@ result_B.df <- result_B.df %>%
   ))
 
 # Display all coefplots
-multivariate_B.fig <- wrap_plots(result_B.df$plots)
+multivariate.fig <- wrap_plots(result_full.df$plots)
 
 
 #                           MULTINOMIAL REGRESSION
@@ -565,7 +522,7 @@ border.df <- border.df %>%
 
 # Apply multinom
 model_mnom.df <- multinom(
-  as.formula(paste0("state1_typology_fct", " ~ ", iv[10])),
+  as.formula(paste0("state1_typology_fct", " ~ ", iv[12])),
   Hess = TRUE,
   data = border.df)
 
@@ -578,23 +535,37 @@ result_mnom.df <- model_mnom.df %>%
          y.level = factor(y.level, 
                        levels = c("'No man's land'", "Landmark", "Checkpoint", 
                                   "Barrier", "Fortified")),
+         term = case_when(
+           term == "state1_relig_shrtislm" ~ "relig_muslim",
+           term == "state1_relig_shrtother" ~ "relig_other",
+           TRUE ~ as.character(term)),
          term_fc = fct_rev(factor(term, 
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
-                                             "state1_polity",
-                                             "refugees_incoming_log",
+                                             "state1_polity",  
+                                             "diff_pol", 
+                                             "state1_military_expenditure_perc_gdp",
                                              "state1_nterror_log",
-                                             "diff_relig",
-                                             "state1_military_expenditure_perc_gdp_log"),
+                                             "refugees_incoming_log",
+                                             "relig_muslim",
+                                             "relig_other",
+                                             "diff_relig_shrt",
+                                             "colony", 
+                                             "comlang_off"),
                                   labels = c("GDP pc (log), builder",
                                              "GDP pc, ratio",
                                              "Polity, builder",
-                                             "Refugees, incoming",
+                                             "Polity, difference",
+                                             "Military expenditures pc (log), builder",
                                              "Terror incidents (log), builder",
-                                             "Different majority religion",
-                                             "Military expenditures pc (log), builder"))))
+                                             "Refugees, incoming (log)",
+                                             "Religion, Muslim\n[Ref.: Christian]",
+                                             "Religion, Other\n[Ref.: Christian]",
+                                             "Same religion",
+                                             "Colonial history",
+                                             "Common language"
+                                             ))))
  
-
 # Odds ratios
 result_mnom_rr.df <- model_mnom.df %>%
   tidy(., conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE) %>% # exponentiate: TRUE
@@ -603,6 +574,10 @@ result_mnom_rr.df <- model_mnom.df %>%
          y.level = factor(y.level, 
                           levels = c("'No man's land'", "Landmark", "Checkpoint", 
                                      "Barrier", "Fortified")),
+         term = case_when(
+           term == "state1_relig_shrtislm" ~ "relig_muslim",
+           term == "state1_relig_shrtother" ~ "relig_other",
+           TRUE ~ as.character(term)),
          term_fc = fct_rev(factor(term, 
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
@@ -631,6 +606,10 @@ result_mnom_ame.df <- tibble(
   mutate(category = factor(category, 
                           levels = c("'No man's land'", "Landmark", "Checkpoint", 
                                      "Barrier", "Fortified")),
+         factor = case_when(
+           factor == "state1_relig_shrtislm" ~ "relig_muslim",
+           factor == "state1_relig_shrtother" ~ "relig_other",
+           TRUE ~ as.character(factor)),
          term_fc = fct_rev(factor(factor, 
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
