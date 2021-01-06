@@ -23,7 +23,8 @@ pkg_attach2("tidyverse", "janitor", "broom", "margins", "patchwork", "gtools",
 # Load: Source data and border indicator
 ### ------------------------------------------------------------------------ ###
 # Source data
-source("SourceData.R")
+# source("SourceData.R")
+border.df <- import("./output/border.rds")
 
 # Indicator
 indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
@@ -187,15 +188,16 @@ global_dist.df <- border.df %>%
          perc = count / group_n * 100) %>%
   mutate(rounded_perc = round(perc, digit = 1)) %>%
   select(continent1, state1_typology, rounded_perc) %>%
-  pivot_wider(names_from = continent1, values_from = rounded_perc) %>%
+  pivot_wider(names_from = continent1, values_from = rounded_perc, values_fill = 0) %>%
   arrange(fac_ind_en(state1_typology))
 
-# Barriers and fortified borders most common in Asia 
-#global_dist.df %>%
-#  select(state1_typology, Asia) %>%
-#  filter(state1_typology %in% c("barrier border", "fortified border")) %>%
-#  summarise(colsum = colSums(.[,2]))
-
+# Total of barriers and fortified borders
+# most prevalent in Asia
+global_dist.df %>%
+  filter(state1_typology %in% c("barrier border", "fortified border")) %>%
+  bind_rows(summarise(., 
+                      across(where(is.numeric), sum),
+                      across(where(is.character), ~"Total")))
 
 #                                  MONADIC
 ### ------------------------------------------------------------------------ ###
