@@ -236,7 +236,7 @@ border_monvars <- border.df %>%
     # import_log,
     # politics
     state1_polity,
-    diff_pol, 
+    absdiff_pol, 
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
@@ -731,17 +731,17 @@ result_mnom_ame_sd.df <- tibble(
                           ##########################
 
 # Get the variables used in the multinomial model
-vars <- str_replace_all(paste0("state1_typology|", iv[[10]]), "[ +\n ]+", "|")
+vars <- str_replace_all(paste0("state1_typology|", iv[[12]]), "[ +\n ]+", "|")
 
 # Select models vars
 # Note: state1: clustervar
 model.df <- border.df %>%
   select(matches(vars), state1) %>%
-  select(-c(1:5, "absdiff_pol")) %>%
+  select(-c(1:5, "state1_typology_fct")) %>%
   mutate(state1_typology = fac_ind_en(state1_typology),
          state1_typology = fct_relevel(state1_typology, "Checkpoint"),
          state1_relig_shrt = factor(state1_relig_shrt)) %>%
-  rename(state1_military = state1_military_expenditure_perc_gdp_log)
+  rename(state1_military = state1_military_expenditure_perc_gdp)
 
 # Distribution of NA
 model.df %>%
@@ -798,15 +798,15 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity diff_pol state1_military state1_nterror_log refugees_incoming_log i.state1_relig_shrt, vce(cluster state1)
+# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off refugees_incoming_log, vce(cluster state1)
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # est sto ml
 
 # forval i = 2/5 {
-#   est res ml
-#   mimrgns, dydx(*) pr(out(`i')) post
-#  est sto ml`i'
+#  est res ml
+#  mimrgns, dydx(*) pr(out(`i')) post
+# est sto ml`i'
 # }
 
 # * Export results
@@ -833,39 +833,45 @@ ame_results.df[seq(1, nrow(ame_results.df), 5), "variable"] <- paste0(ame_result
 
 # Make longer
 ame_results.df <- ame_results.df %>%
-  filter(str_detect(variable, "^1", negate = TRUE)) %>%
-  mutate(variable = str_replace_all(variable, "2.", ""), 
-         type = str_extract(variable, "coef$+|se$+|t$+|p$+|ci$+"),
+  mutate(across(everything(), ~car::recode(.x,  "c('0', '.', '.,.') = NA_character_"))) %>%
+  filter(across(everything(), ~!is.na(.x))) %>%
+  mutate(type = str_extract(variable, "coef$+|se$+|t$+|p$+|ci$+"),
          variable = str_replace(variable, "_coef$+|_se$+|_t$+|_p$+|_ci$+", "")) %>%
   pivot_longer(2:5, names_to = "typology") %>%
   pivot_wider(names_from = type, values_from = value) %>%
   separate(ci, into = c("conf.low", "conf.high"), sep = ",") %>%
   mutate_at(vars(3:8), as.numeric) %>%
   mutate(variable = case_when(
-    variable == "state1_relig_shrt" ~ "relig_muslim",
+    variable == "2.state1_relig_shrt" ~ "relig_muslim",
     variable == "3.state1_relig_shrt" ~ "relig_other",
-    TRUE ~ as.character(variable)
-  )) %>%
+    TRUE ~ as.character(variable)),
+    variable = str_replace_all(variable, "1\\.", "")) %>%
   mutate(pstars = stars.pval(p),
          variable = fct_rev(factor(variable, 
-                              levels = c("state1_gdp_log",
-                                         "ratio_gdp",
-                                         "state1_polity",
-                                         "diff_pol", 
-                                         "state1_military",
-                                         "state1_nterror_log",
-                                         "refugees_incoming_log",
-                                         "relig_muslim",
-                                         "relig_other"),
-                              labels = c("GDP pc (log), builder",
-                                         "GDP pc, ratio",
-                                         "Polity, builder",
-                                         "Polity, difference",
-                                         "Military expenditures pc (log), builder",
-                                         "Terror incidents (log), builder",
-                                         "Refugees, incoming (log)",
-                                         "Religion, Muslim\n[Ref.: Christian]",
-                                         "Religion, Other\n[Ref.: Christian]"))))
+                                   levels = c("state1_gdp_log",
+                                              "ratio_gdp",
+                                              "state1_polity",  
+                                              "absdiff_pol", 
+                                              "state1_military",
+                                              "state1_nterror_log",
+                                              "refugees_incoming_log",
+                                              "relig_muslim",
+                                              "relig_other",
+                                              "diff_relig_shrt",
+                                              "colony", 
+                                              "comlang_off"),
+                                   labels = c("GDP pc (log), builder",
+                                              "GDP pc, ratio",
+                                              "Polity, builder",
+                                              "Polity, abs. difference",
+                                              "Military expenditures pc (log), builder",
+                                              "Terror incidents (log), builder",
+                                              "Refugees, incoming (log)",
+                                              "Religion, Muslim\n[Ref.: Christian]",
+                                              "Religion, Other\n[Ref.: Christian]",
+                                              "Same religion",
+                                              "Colonial history",
+                                              "Common language"))))
 
 # Plot
 # Create coefplots
@@ -908,8 +914,8 @@ imp_nest.df <- import("./output/imputed_data.rds") %>%
   group_by(imp_no) %>%
   nest() %>%
   mutate(formula = paste0("state1_typology", " ~ ", 
-                          str_replace_all(iv[10],
-                                          "state1_military_expenditure_perc_gdp_log",
+                          str_replace_all(iv[12],
+                                          "state1_military_expenditure_perc_gdp",
                                           "state1_military")))
 
 # Model across dataframes
@@ -965,7 +971,7 @@ imp_ame.df <- imp_ame.df %>%
 
 # Computations for the results section
 # ---------------------------------------------------------------------------- #
-# change from mean(mtcars$hp) +/- sd(mtcars$hp)
+# change from mean(df$var) +/- sd(df$var)
 ame_sd.df <- imp_ame.df %>%
   unnest(imp_ame) 
 
@@ -974,14 +980,16 @@ ame_sd.df %>%
 
 # Mean, SD, Mean +/- 1 SD
 # Continuous predictors
-pred <- colnames(ame_sd.df)[c(3:9)]
-pred[5] <- "state1_military_expenditure_perc_gdp_log"
+pred <- colnames(ame_sd.df)[c(3:12)]
+pred[which("state1_military" == pred)] <- "state1_military_expenditure_perc_gdp"
 
+# Get distribution on continuous predictors
 mean_sd.df <- border.df %>%
   select(all_of(pred)) %>%
   psych::describe() %>%
+  as.data.frame() %>%
   select(mean, sd) %>%
-  rownames_to_column(var = "variable") %>%
+  rownames_to_column(., var = "variable") %>%
   mutate(from = mean - sd,
          to = mean + sd)
 
