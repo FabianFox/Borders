@@ -12,7 +12,7 @@
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("xfun")) install.packages("xfun")
-pkg_attach2("tidyverse", "janitor", "broom", "margins", "patchwork", "gtools",
+pkg_attach2("tidyverse", "countrycode", "janitor", "broom", "margins", "patchwork", "gtools",
             "nnet", "ggeffects", "mice", "rio")
 
 
@@ -27,7 +27,7 @@ pkg_attach2("tidyverse", "janitor", "broom", "margins", "patchwork", "gtools",
 border.df <- import("./output/border.rds")
 
 # Indicator
-indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
+indicator.df <- import("O:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
                        sheet = 1, na = "NA") %>%
   as_tibble() %>%
   select(1:3, 16) %>%
@@ -515,6 +515,11 @@ multivariate.fig <- wrap_plots(result_full.df$plots)
 
 #                           MULTINOMIAL REGRESSION
 ### ------------------------------------------------------------------------ ###
+# Notes/issues:
+# Large confidence intervals for...
+# - 'No man's land': variable 'colony' only two cases 
+# - Landmark border: variable 'state1_relig_shrt' no cases in category 'islm'
+
 # nnet::multinom 
 border.df <- border.df %>%
   mutate(state1_typology_fct = fac_ind_en(state1_typology),
@@ -563,8 +568,7 @@ result_mnom.df <- model_mnom.df %>%
                                              "Religion, Other\n[Ref.: Christian]",
                                              "Same religion",
                                              "Colonial history",
-                                             "Common language"
-                                             ))))
+                                             "Common language"))))
  
 # Odds ratios
 result_mnom_rr.df <- model_mnom.df %>%
@@ -581,18 +585,28 @@ result_mnom_rr.df <- model_mnom.df %>%
          term_fc = fct_rev(factor(term, 
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
-                                             "state1_polity",
-                                             "refugees_incoming_log",
+                                             "state1_polity",  
+                                             "diff_pol", 
+                                             "state1_military_expenditure_perc_gdp",
                                              "state1_nterror_log",
-                                             "diff_relig",
-                                             "state1_military_expenditure_perc_gdp_log"),
+                                             "refugees_incoming_log",
+                                             "relig_muslim",
+                                             "relig_other",
+                                             "diff_relig_shrt",
+                                             "colony", 
+                                             "comlang_off"),
                                   labels = c("GDP pc (log), builder",
                                              "GDP pc, ratio",
                                              "Polity, builder",
-                                             "Refugees, incoming",
+                                             "Polity, difference",
+                                             "Military expenditures pc (log), builder",
                                              "Terror incidents (log), builder",
-                                             "Different majority religion",
-                                             "Military expenditures pc (log), builder")))) 
+                                             "Refugees, incoming (log)",
+                                             "Religion, Muslim\n[Ref.: Christian]",
+                                             "Religion, Other\n[Ref.: Christian]",
+                                             "Same religion",
+                                             "Colonial history",
+                                             "Common language"))))
 
 # AME
 result_mnom_ame.df <- tibble(
@@ -613,18 +627,28 @@ result_mnom_ame.df <- tibble(
          term_fc = fct_rev(factor(factor, 
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
-                                             "state1_polity",
-                                             "refugees_incoming_log",
+                                             "state1_polity",  
+                                             "diff_pol", 
+                                             "state1_military_expenditure_perc_gdp",
                                              "state1_nterror_log",
-                                             "diff_relig",
-                                             "state1_military_expenditure_perc_gdp_log"),
+                                             "refugees_incoming_log",
+                                             "relig_muslim",
+                                             "relig_other",
+                                             "diff_relig_shrt",
+                                             "colony", 
+                                             "comlang_off"),
                                   labels = c("GDP pc (log), builder",
                                              "GDP pc, ratio",
                                              "Polity, builder",
-                                             "Refugees, incoming",
+                                             "Polity, difference",
+                                             "Military expenditures pc (log), builder",
                                              "Terror incidents (log), builder",
-                                             "Different majority religion",
-                                             "Military expenditures pc (log), builder")))) 
+                                             "Refugees, incoming (log)",
+                                             "Religion, Muslim\n[Ref.: Christian]",
+                                             "Religion, Other\n[Ref.: Christian]",
+                                             "Same religion",
+                                             "Colonial history",
+                                             "Common language"))))
 
 # Plots
 # ---------------------------------------------------------------------------- #
@@ -658,7 +682,7 @@ mnom_ame.fig <- ggplot(data = result_mnom_ame.df %>%
   geom_point(aes(x = term_fc, y = AME), stat = "identity", alpha = .5) +
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(~category) +
-  ylim(-0.4, 0.4) +
+  ylim(-0.6, 0.6) +
   coord_flip() +
   labs(
     title = "",
@@ -666,7 +690,7 @@ mnom_ame.fig <- ggplot(data = result_mnom_ame.df %>%
   theme_minimal()
 
 # ggeffects (see: https://strengejacke.github.io/ggeffects/)
-result_mnom.gg <- ggeffect(model_mnom.df, terms = "diff_relig") %>%
+result_mnom.gg <- ggeffect(model_mnom.df, terms = "state1_gdp_log") %>%
   mutate(response.level = if_else(response.level == "X.No.man.s.land.", 
                                   "'No man's land'", response.level),
          response.level = factor(response.level, 
