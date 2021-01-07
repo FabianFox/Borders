@@ -208,7 +208,7 @@ border.df <- border.df %>%
          # Economy
          state1_gdp, state2_gdp, state1_gdp_log, state2_gdp_log, ratio_gdp,
          # Polity
-         state1_polity, state2_polity, diff_pol,
+         state1_polity, state2_polity, absdiff_pol,
          # Security
          state1_military_expenditure_perc_gdp, state2_military_expenditure_perc_gdp,
          state1_nterror_log, state2_nterror_log,
@@ -400,7 +400,7 @@ iv <- c(
   "state1_gdp_log",
   "ratio_gdp",
   "state1_polity",
-  "diff_pol", 
+  "absdiff_pol", 
   "state1_military_expenditure_perc_gdp",
   "state1_nterror_log",
   "refugees_incoming_log",
@@ -413,7 +413,7 @@ iv <- c(
   "state1_gdp_log +
   ratio_gdp +
   state1_polity +
-  diff_pol + 
+  absdiff_pol + 
   state1_military_expenditure_perc_gdp +
   state1_nterror_log +
   refugees_incoming_log +
@@ -548,7 +548,7 @@ result_mnom.df <- model_mnom.df %>%
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
                                              "state1_polity",  
-                                             "diff_pol", 
+                                             "absdiff_pol", 
                                              "state1_military_expenditure_perc_gdp",
                                              "state1_nterror_log",
                                              "refugees_incoming_log",
@@ -560,7 +560,7 @@ result_mnom.df <- model_mnom.df %>%
                                   labels = c("GDP pc (log), builder",
                                              "GDP pc, ratio",
                                              "Polity, builder",
-                                             "Polity, difference",
+                                             "Polity, abs. difference",
                                              "Military expenditures pc (log), builder",
                                              "Terror incidents (log), builder",
                                              "Refugees, incoming (log)",
@@ -586,7 +586,7 @@ result_mnom_rr.df <- model_mnom.df %>%
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
                                              "state1_polity",  
-                                             "diff_pol", 
+                                             "absdiff_pol", 
                                              "state1_military_expenditure_perc_gdp",
                                              "state1_nterror_log",
                                              "refugees_incoming_log",
@@ -598,7 +598,7 @@ result_mnom_rr.df <- model_mnom.df %>%
                                   labels = c("GDP pc (log), builder",
                                              "GDP pc, ratio",
                                              "Polity, builder",
-                                             "Polity, difference",
+                                             "Polity, abs. difference",
                                              "Military expenditures pc (log), builder",
                                              "Terror incidents (log), builder",
                                              "Refugees, incoming (log)",
@@ -628,7 +628,7 @@ result_mnom_ame.df <- tibble(
                                   levels = c("state1_gdp_log",
                                              "ratio_gdp",
                                              "state1_polity",  
-                                             "diff_pol", 
+                                             "absdiff_pol", 
                                              "state1_military_expenditure_perc_gdp",
                                              "state1_nterror_log",
                                              "refugees_incoming_log",
@@ -640,7 +640,7 @@ result_mnom_ame.df <- tibble(
                                   labels = c("GDP pc (log), builder",
                                              "GDP pc, ratio",
                                              "Polity, builder",
-                                             "Polity, difference",
+                                             "Polity, abs. difference",
                                              "Military expenditures pc (log), builder",
                                              "Terror incidents (log), builder",
                                              "Refugees, incoming (log)",
@@ -719,8 +719,7 @@ result_mnom_ame_sd.df <- tibble(
     ~summary(
       margins(
         model = .x, category = .y, 
-        variables = c("state1_gdp_log", 
-                      "state1_military_expenditure_perc_gdp_log"), 
+        variables = c("state1_gdp_log"), 
         change = "sd")))) %>%
   select(-model) %>%
   unnest(cols = estimate) %>%
