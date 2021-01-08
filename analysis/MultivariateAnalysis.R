@@ -27,7 +27,7 @@ pkg_attach2("tidyverse", "countrycode", "janitor", "broom", "margins", "patchwor
 border.df <- import("./output/border.rds")
 
 # Indicator
-indicator.df <- import("O:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
+indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
                        sheet = 1, na = "NA") %>%
   as_tibble() %>%
   select(1:3, 16) %>%
@@ -36,36 +36,6 @@ indicator.df <- import("O:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTy
          !(state1 == "QAT" & state2 == "ARE")) %>%    # https://bit.ly/39EOy4Y
   clean_names() %>%
   distinct(state1, state2, .keep_all = TRUE)
-
-# Add year of border installation
-# Data from BordersJoin.R
-barriers.df <- import("./analysis/Fence data/barriers_df.rds")
-
-list.fences <- barriers.df %>%
-  select(-indicator) %>%
-  nest(data = c(-source)) %>%
-  mutate(data = set_names(data, source))
-
-# Rename year-columns to data source and unnest
-list.fences <- map2(
-  .x = list.fences$data, 
-  .y =  names(list.fences$data),
-  ~rename(.x, !!.y := year)) %>%
-  map_df(., ~as_tibble(.x))
-
-# Join
-fortified_borders.df <- indicator.df %>%
-  filter(typology %in% c("fortified border", "barrier border")) %>%
-  left_join(list.fences, by = c("state1", "state2")) %>%
-  as_tibble() 
-
-# Create a column that indicates whether a valid year exist
-# See: https://stackoverflow.com/questions/55671205/fill-missing-values-rowwise-right-left
-built <- t(zoo::na.locf(t(fortified_borders.df[, c(5:10)])))[,6]
-
-# Add to dataframe
-fortified_borders.df <- fortified_borders.df %>%
-  mutate(built_combined = built)
 
 # Join indicator data
 # duplicates because some countries share multiple borders, i.e. RUS/CHN
@@ -216,32 +186,25 @@ border.df <- border.df %>%
          state1_relig_shrt, state2_relig_shrt, diff_relig, diff_relig_shrt,
          colony, comlang_off,
          # Controls
-         state1_pop, state2_pop, state1_pop_log, state2_pop_log,
-         state1_pop_in_million, state2_pop_in_million,
          refugees_incoming_log, refugees_incoming_pc)
 
 
 #                   DESCRIPTIVE STATISTICS & FIGURES
 ### ------------------------------------------------------------------------ ###
 # Summary stats
-border_monvars <- border.df %>%
+border_vars <- border.df %>%
   group_by(state1_typology) %>%
   summarise_at(vars(
-    # control
-    # state1_pop_per_million,
     # economy
     state1_gdp_log,
     ratio_gdp,
-    # export_log,
-    # import_log,
     # politics
     state1_polity,
-    absdiff_pol, 
+    absdiff_pol,
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
-    # culture
-    # (see below)
+    # culture (see below)
     # migration
     refugees_incoming_log
   ),
@@ -253,7 +216,7 @@ border_monvars <- border.df %>%
   )
 
 # Prepare
-border_monvars <- border_monvars %>% 
+border_vars <- border_vars %>% 
   gather(var, value, -state1_typology) %>%
   mutate(measure = str_extract(var, "[:alpha:]+$"),
          variable = str_extract(var, paste0(".+(?=", measure, ")")) %>%
@@ -262,7 +225,7 @@ border_monvars <- border_monvars %>%
   spread(measure, value)
 
 # List-column
-border_monvars.nest <- border_monvars %>%
+border_vars.nest <- border_vars %>%
   group_by(variable) %>%
   nest() %>%
   ungroup() %>%
@@ -270,36 +233,40 @@ border_monvars.nest <- border_monvars %>%
     obs = map(data, ~sum(.x$obs)),
     title = c(
     "Difference in political regimes (PolityIV)",
-    "GDP per capita (in USD), ratio",  
-    # "Dyadic export (in USD), log",
-    # "Dyadic import (in USD), log",
+    "GDP per capita (in USD), ratio",
     "Refugee inflow from neighbor, log",
     "GDP per capita (in USD), log",
     "Military expenditure (as % of GDP)",
-    "Terror incidents (annual), log",
-    "Political regime (PolityIV)"
-  ),
+    "Terrorist incidents (annual), log",
+    "Political regime (PolityIV)"),
   subtitle_1 = c(
     "\nData: PolityIV (2017)",
     "\nData: World Bank (2017)",
-    # "\nData: COW: Trade (2014)",
-    # "\nData: COW: Trade (2014)",
     "\nData: World Refugee Dataset (2015)",
     "\nData: World Bank (2017)",
     "\nData: World Bank (2017)",
     "\nData: Global Terrorism Database (2017)",
-    "\nData: PolityIV (2017)"
-  ),
+    "\nData: PolityIV (2017)"),
   subtitle = paste0(subtitle_1, "\nObservations: ", obs)) %>%
   select(-subtitle_1) 
 
+# Monadic and dyadic variables
+### ------------------------------------------------------------------------ ###
+border_monvars.nest <- border_vars.nest %>%
+  filter(!variable %in% c("absdiff_pol", "ratio_gdp"))
+
+border_dyadvars.nest <- border_vars.nest %>%
+  filter(variable %in% c("absdiff_pol", "ratio_gdp"))
+
 # Custom arrange 
 border_monvars.nest <- border_monvars.nest %>%
-  mutate(order = c(4, 2, 7, 1, 5, 6, 3)) %>%
+  mutate(order = c(5,1,3,4,2)) %>%
   arrange(order) %>%
   select(-order)
 
-# Plot
+# Plots (monadic)
+### ------------------------------------------------------------------------ ###
+# Create plots
 border_monvars.fig <- border_monvars.nest %>%
   mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
                         geom_bar(aes(x = fac_ind_en(state1_typology), y = mean),
@@ -317,7 +284,7 @@ border_monvars.fig <- border_monvars.nest %>%
                       ))
 
 # Figures for religion indicator
-# (A) Share of majority religion in indicator
+# Share of majority religion in indicator
 relig.fig <- border.df %>%
   group_by(state1_typology, state1_relig_shrt) %>%
   summarise(relig_num = length(state1_relig_shrt)) %>%
@@ -340,10 +307,32 @@ relig.fig <- border.df %>%
         plot.caption = element_text(size = 10),
         axis.text = element_text(size = 10)) 
   
-# (B) Chart for different majority religions across the border
+# Put figures together with patchwork
+border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + relig.fig
+
+# Plots (dyadic)
+### ------------------------------------------------------------------------ ###
+# Create plots
+border_dyadvars.fig <- border_dyadvars.nest %>%
+  mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
+                        geom_bar(aes(x = fac_ind_en(state1_typology), y = mean),
+                                 stat = "identity") +
+                        scale_y_continuous(breaks = seq(0, 10, 2), limits = c(-1,10.5)) +
+                        labs(
+                          title = ..2,
+                          caption = ..3,
+                          x = "", y = "") +
+                        theme.basic +
+                        theme(
+                          plot.title = element_text(size = 10, face = "bold"),
+                          plot.caption = element_text(size = 10),
+                          axis.text = element_text(size = 10))
+  ))
+
+# Chart for different majority religions across the border
 diff_relig.fig <- border.df %>%
   group_by(state1_typology) %>%
-  summarise(diff_relig = sum(diff_relig) / n() * 100) %>%
+  summarise(diff_relig = sum(diff_relig_shrt) / n() * 100) %>%
   mutate(not_diff_relig = 100 - diff_relig) %>%
   ggplot() +
   geom_bar(aes(x = fac_ind_en(state1_typology), y = diff_relig),
@@ -359,9 +348,35 @@ diff_relig.fig <- border.df %>%
         plot.caption = element_text(size = 10),
         axis.text = element_text(size = 10))
 
-# Put figures together with patchwork
-border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + relig.fig
+# Binary variables
+bin_vars.df <- border.df %>%
+  group_by(state1_typology) %>%
+  summarise(across(c("diff_relig", "colony", "comlang_off"), ~sum(.x) / n() * 100)) %>% 
+  ungroup() %>%
+  pivot_longer(cols = 2:4, names_to = "variable") %>%
+  group_by(variable) %>%
+  nest() %>%
+  ungroup() %>%
+  mutate(title = c(
+    "Share of different majority religions",
+    "Colonial ties",
+    "Common official language"),
+  subtitle_1 = c(
+    "\nData: COW: World Religion Data (2010)",
+    "\nData: CEPII: GeoDist",
+    "\nData: CEPII: GeoDist"))
 
+# Number of observations
+bin_vars.obs <- border.df %>%
+  summarise(across(c("diff_relig", "colony", "comlang_off"), ~sum(!is.na(.x)))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "obs") 
+
+# Join to bin_vars.df
+bin_vars.df <- bin_vars.df %>%
+  left_join(y = bin_vars.obs)
+
+# Put figures together with patchwork
+border_dyadvars_pwork.fig <- wrap_plots(border_dyadvars.fig$plots) + diff_relig.fig
 
                           ##########################
                           #       REGRESSION       #
