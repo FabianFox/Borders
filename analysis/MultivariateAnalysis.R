@@ -205,6 +205,9 @@ border_vars <- border.df %>%
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
     # culture (see below)
+    colony,
+    comlang_off,
+    diff_relig_shrt,
     # migration
     refugees_incoming_log
   ),
@@ -233,6 +236,9 @@ border_vars.nest <- border_vars %>%
     obs = map(data, ~sum(.x$obs)),
     title = c(
     "Difference in political regimes (PolityIV)",
+    "Shared colonial history",
+    "Common official language",
+    "Different majority religion",
     "GDP per capita (in USD), ratio",
     "Refugee inflow from neighbor, log",
     "GDP per capita (in USD), log",
@@ -241,6 +247,9 @@ border_vars.nest <- border_vars %>%
     "Political regime (PolityIV)"),
   subtitle_1 = c(
     "\nData: PolityIV (2017)",
+    "\nData: CEPII (2011)",
+    "\nData: CEPII (2011)",
+    "\nData: COW: World Religion Data (2010)",
     "\nData: World Bank (2017)",
     "\nData: World Refugee Dataset (2015)",
     "\nData: World Bank (2017)",
@@ -252,20 +261,22 @@ border_vars.nest <- border_vars %>%
 
 # Monadic and dyadic variables
 ### ------------------------------------------------------------------------ ###
+# Monadic
 border_monvars.nest <- border_vars.nest %>%
-  filter(!variable %in% c("absdiff_pol", "ratio_gdp"))
+  filter(!variable %in% c("absdiff_pol", "ratio_gdp", "colony", "comlang_off", "diff_relig_shrt"))
 
+# Dyadic
 border_dyadvars.nest <- border_vars.nest %>%
-  filter(variable %in% c("absdiff_pol", "ratio_gdp"))
+  filter(variable %in% c("absdiff_pol", "ratio_gdp", "colony", "comlang_off", "diff_relig_shrt"))
 
-# Custom arrange 
+# Plots (monadic)
+### ------------------------------------------------------------------------ ###
+# Custom order of plots
 border_monvars.nest <- border_monvars.nest %>%
   mutate(order = c(5,1,3,4,2)) %>%
   arrange(order) %>%
   select(-order)
 
-# Plots (monadic)
-### ------------------------------------------------------------------------ ###
 # Create plots
 border_monvars.fig <- border_monvars.nest %>%
   mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
@@ -312,8 +323,16 @@ border_monvars_pwork.fig <- wrap_plots(border_monvars.fig$plots) + relig.fig
 
 # Plots (dyadic)
 ### ------------------------------------------------------------------------ ###
+# Custom order of plots
+border_dyadvars.nest <- border_dyadvars.nest %>%
+  mutate(order = c(2, 3, 4, 5, 1)) %>%
+  arrange(order) %>%
+  select(-order)
+
 # Create plots
+# Continuous variables
 border_dyadvars.fig <- border_dyadvars.nest %>%
+  filter(variable %in% c("ratio_gdp", "absdiff_pol")) %>%
   mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
                         geom_bar(aes(x = fac_ind_en(state1_typology), y = mean),
                                  stat = "identity") +
@@ -329,54 +348,27 @@ border_dyadvars.fig <- border_dyadvars.nest %>%
                           axis.text = element_text(size = 10))
   ))
 
-# Chart for different majority religions across the border
-diff_relig.fig <- border.df %>%
-  group_by(state1_typology) %>%
-  summarise(diff_relig = sum(diff_relig_shrt) / n() * 100) %>%
-  mutate(not_diff_relig = 100 - diff_relig) %>%
-  ggplot() +
-  geom_bar(aes(x = fac_ind_en(state1_typology), y = diff_relig),
-           stat = "identity") +
-  scale_y_continuous(labels = function(x) paste0(x, "%")) +
-  labs(
-    title = "Share of different majority religions",
-    caption = paste0("\nData: COW: World Religion Data (2010)", "\nObservations: ",
-                     sum(!is.na(border.df$diff_relig))),
-    x = "", y = "") +
-  theme.basic +
-  theme(plot.title = element_text(size = 10, face = "bold"),
-        plot.caption = element_text(size = 10),
-        axis.text = element_text(size = 10))
-
 # Binary variables
-bin_vars.df <- border.df %>%
-  group_by(state1_typology) %>%
-  summarise(across(c("diff_relig", "colony", "comlang_off"), ~sum(.x) / n() * 100)) %>% 
-  ungroup() %>%
-  pivot_longer(cols = 2:4, names_to = "variable") %>%
-  group_by(variable) %>%
-  nest() %>%
-  ungroup() %>%
-  mutate(title = c(
-    "Share of different majority religions",
-    "Colonial ties",
-    "Common official language"),
-  subtitle_1 = c(
-    "\nData: COW: World Religion Data (2010)",
-    "\nData: CEPII: GeoDist",
-    "\nData: CEPII: GeoDist"))
-
-# Number of observations
-bin_vars.obs <- border.df %>%
-  summarise(across(c("diff_relig", "colony", "comlang_off"), ~sum(!is.na(.x)))) %>%
-  pivot_longer(cols = everything(), names_to = "variable", values_to = "obs") 
-
-# Join to bin_vars.df
-bin_vars.df <- bin_vars.df %>%
-  left_join(y = bin_vars.obs)
+border_dyadvars_bin.fig <- border_dyadvars.nest %>%
+  filter(variable %in% c("colony", "comlang_off", "diff_relig_shrt")) %>%
+  mutate(plots = pmap(list(data, title, subtitle), ~ggplot(data = ..1) +
+                        geom_bar(aes(x = fac_ind_en(state1_typology), y = mean * 100),
+                                 stat = "identity") +
+                        scale_y_continuous(labels = function(x) paste0(x, "%"),
+                                           limits = c(0,60)) +
+                        labs(
+                          title = ..2,
+                          caption = ..3,
+                          x = "", y = "") +
+                        theme.basic +
+                        theme(
+                          plot.title = element_text(size = 10, face = "bold"),
+                          plot.caption = element_text(size = 10),
+                          axis.text = element_text(size = 10))
+  ))
 
 # Put figures together with patchwork
-border_dyadvars_pwork.fig <- wrap_plots(border_dyadvars.fig$plots) + diff_relig.fig
+border_dyadvars_pwork.fig <- wrap_plots(c(border_dyadvars.fig$plots, border_dyadvars_bin.fig$plots))
 
                           ##########################
                           #       REGRESSION       #
