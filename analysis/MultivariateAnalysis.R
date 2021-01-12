@@ -334,8 +334,8 @@ border.plots <- border.plots %>%
                  "refugees_incoming_log"),
       labels = c("GDP per capita (in USD), log",
                  "GDP per capita (in USD), ratio",
-                 "Political regime (PolityIV)",
-                 "Difference in political regimes (PolityIV)",
+                 "Political regime",
+                 "Difference in political regimes",
                  "Military expenditure (as % of GDP)",
                  "Terrorist incidents (annual), log",
                  "Shared colonial history",
@@ -1021,7 +1021,9 @@ ggsave(
 
 # Figure 3
 # Bivariate relationship
-gtsave(border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Descriptive Statistics.png")
+gtsave(
+  border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Descriptive Statistics.png"
+  )
 
 # Figure 4
 # Multinomial regression (AME)
