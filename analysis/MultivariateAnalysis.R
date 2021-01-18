@@ -12,7 +12,7 @@
 ## -------------------------------------------------------------------------- ##
 if (!require("xfun")) install.packages("xfun")
 pkg_attach2("tidyverse", "countrycode", "janitor", "broom", "margins", "patchwork", "gtools",
-            "nnet", "ggeffects", "mice", "rio")
+            "nnet", "ggeffects", "mice", "rio", "gt")
 
 
                             ###################
@@ -210,12 +210,12 @@ border_vars <- border.df %>%
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
+    refugees_incoming_log,
     # culture
-    colony,
-    comlang_off,
     diff_relig_shrt,
-    # migration
-    refugees_incoming_log
+    # Control
+    colony,
+    comlang_off
   ),
   list(~mean(., na.rm = T), 
        ~sd(., na.rm = T), 
@@ -232,7 +232,10 @@ border_vars <- border_vars %>%
            str_sub(., end = -2)) %>%
   select(-var) %>%
   spread(measure, value) %>%
-  mutate(across(where(is.numeric), ~round(., digits = 2)))
+  mutate(across(where(is.numeric), ~round(., digits = 2))) %>%
+  # Add categorical variable: religion
+  add_row(variable = "state1_relig_shrt", max = NA_real_, min = NA_real_, 
+          obs = sum(!is.na(border.df$state1_relig_shrt)), sd = NA_real_)
 
 # Ordering for gt table
 ### ------------------------------------------------------------------------ ###
@@ -241,28 +244,31 @@ border_vars <- border_vars %>%
     variable,
     levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
                "absdiff_pol", "state1_military_expenditure_perc_gdp",
-               "state1_nterror_log", "colony", "comlang_off",
-               "diff_relig_shrt", "refugees_incoming_log"),
+               "state1_nterror_log", "refugees_incoming_log", 
+               "state1_relig_shrt", "diff_relig_shrt", 
+               "colony", "comlang_off"),
     labels = c("GDP per capita (in USD), log",
                "GDP per capita (in USD), ratio",
                "Political regime",
                "Difference in political regimes",
                "Military expenditure (as % of GDP)",
                "Terrorist incidents (annual), log",
-               "Shared colonial history",
-               "Common official language",
+               "Refugee inflow from neighbor, log",
+               "Majority religion",
                "Different majority religion",
-               "Refugee inflow from neighbor, log")),
-    source = c("PolityIV (2017)",
+               "Shared colonial history",
+               "Common official language")),
+    source = c("CEPII (2011)",
                "CEPII (2011)",
-               "CEPII (2011)",
+               "PolityIV (2017)",
                "COW: World Religion Data (2010)",
                "World Bank (2017)",
                "World Refugee Dataset (2015)",
                "World Bank (2017)",
                "World Bank (2017)",
                "Global Terrorism Database (2017)",
-               "PolityIV (2017)"),
+               "PolityIV (2017)",
+               "COW: World Religion Data (2010)"),
     plot = NA)
 
 # Rename columns
@@ -282,16 +288,16 @@ border.plots <- border.df %>%
     ratio_gdp,
     # politics
     state1_polity,
-    absdiff_pol,
+    diff_pol,
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
+    refugees_incoming_log,
     # culture
-    colony,
-    comlang_off,
     diff_relig_shrt,
-    # migration
-    refugees_incoming_log
+    # Control
+    colony,
+    comlang_off
   ),
   list(~mean(., na.rm = T), 
        ~sd(., na.rm = T), 
@@ -314,11 +320,10 @@ border.plots <- border.plots %>%
   group_by(variable) %>%
   nest() %>%
   ungroup() %>%
-  mutate(
-    obs = map(data, ~sum(.x$obs)),
-    title = c("Difference in political regimes",
-              "Shared colonial history",
+  mutate(obs = map(data, ~sum(.x$obs)),
+    title = c("Shared colonial history",
               "Common official language",
+              "Difference in political regimes",
               "Different majority religion",
               "GDP per capita (in USD), ratio",
               "Refugee inflow from neighbor, log",
@@ -326,23 +331,24 @@ border.plots <- border.plots %>%
               "Military expenditure (as % of GDP)",
               "Terrorist incidents (annual), log",
               "Political regime"),
-    variable = factor(
+   variable = factor(
       variable,
-      levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", "absdiff_pol", 
-                 "state1_military_expenditure_perc_gdp", "state1_nterror_log", 
-                 "colony", "comlang_off", "diff_relig_shrt", 
-                 "refugees_incoming_log"),
+      levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
+                 "absdiff_pol", "state1_military_expenditure_perc_gdp",
+                 "state1_nterror_log", "refugees_incoming_log", 
+                 "state1_relig_shrt", "diff_relig_shrt", 
+                 "colony", "comlang_off"),
       labels = c("GDP per capita (in USD), log",
                  "GDP per capita (in USD), ratio",
                  "Political regime",
                  "Difference in political regimes",
                  "Military expenditure (as % of GDP)",
                  "Terrorist incidents (annual), log",
-                 "Shared colonial history",
-                 "Common official language",
+                 "Refugee inflow from neighbor, log",
+                 "Majority religion",
                  "Different majority religion",
-                 "Refugee inflow from neighbor, log"))) %>%
-  arrange(variable)
+                 "Shared colonial history",
+                 "Common official language")))
 
 # Add grand mean
 border.plots <- border.plots %>%
@@ -351,7 +357,8 @@ border.plots <- border.plots %>%
   select(-obs) %>% 
   unnest(cols = data) %>% 
   group_by(variable) %>% 
-  nest() 
+  nest() %>%
+  ungroup()
 
 # Create plots
 border.plots <- border.plots %>%
@@ -364,9 +371,33 @@ border.plots <- border.plots %>%
                        theme(axis.text.x = element_text(size = 30))
   ))
 
+# Add plot for religion
+relig.fig <- border.df %>%
+  group_by(state1_typology, state1_relig_shrt) %>%
+  count() %>%
+  ungroup %>%
+  group_by(state1_typology) %>%
+  mutate(n_total = sum(n),
+         perc = n / n_total * 100) %>%
+  ggplot() +
+  geom_bar(aes(x = fac_ind_sm(state1_typology), y = perc, fill = state1_relig_shrt),
+           stat = "identity") +
+  theme_void() +
+  scale_fill_grey(start = 0.8, end = 0.2,
+                  name = "",
+                  labels = c("Christian", "Islamic", "Other")) +
+  theme(axis.text.x = element_text(size = 30),
+        legend.text = element_text(size = 30))
+
+# Add to existing table
+border.plots <- border.plots %>%
+  add_row(variable = factor("Different majority religion"), data = list(NA), plots = list(relig.fig)) %>%
+  arrange(variable)
+
 # Create small multiple table
 ### ------------------------------------------------------------------------ ###
 border_vars.plot <- gt(border_vars) %>%
+  fmt_missing(columns = everything(), missing_text = "---") %>%
   text_transform(
     locations = cells_body(vars(Plot)),
     fn = function(x) {
@@ -1022,13 +1053,13 @@ ggsave(
 # Figure 3
 # Bivariate relationship
 gtsave(
-  border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Descriptive Statistics.png"
+  border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Tab1 - Descriptive Statistics.png"
   )
 
-# Figure 4
+# Figure 3
 # Multinomial regression (AME)
 ggsave(
-  plot = result_mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Multinomial Regression - AME.tiff", 
+  plot = result_mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Multinomial Regression - AME.tiff", 
   width = 14, height = 8.5, unit = "in",
   dpi = 300
 )
