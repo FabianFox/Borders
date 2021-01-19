@@ -367,22 +367,44 @@ border.plots <- border.plots %>%
   ))
 
 # Plot for religion (categorical)
-relig.fig <- border.df %>%
+# Global distribution
+relig.glob <- border.df %>%
+  group_by(state1_relig_shrt) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(n_total = sum(n),
+         perc = n / n_total * 100,
+         state1_typology = "global") 
+
+# Distribution by category  
+relig.typ <- border.df %>%
   group_by(state1_typology, state1_relig_shrt) %>%
   count() %>%
   ungroup %>%
   group_by(state1_typology) %>%
   mutate(n_total = sum(n),
-         perc = n / n_total * 100) %>%
+         perc = n / n_total * 100)
+
+# Figure
+relig.fig <- relig.typ %>%
+  bind_rows(relig.glob) %>%
   ggplot() +
-  geom_bar(aes(x = fac_ind_sm(state1_typology), y = perc, fill = state1_relig_shrt),
+  geom_bar(aes(x = factor(state1_typology, 
+                          levels = c("frontier border", "landmark border", 
+                                     "checkpoint border", "barrier border", 
+                                     "fortified border", "global"),
+                          labels = c("'No man's land'","Landmark", "Checkpoint", 
+                                     "Barrier", "Fortified", "Global")), 
+               y = perc, fill = state1_relig_shrt),
            stat = "identity") +
-  theme_void() +
+  theme.basic +
+  labs(x = "", y = "",
+       caption = paste("Data: COW: World Religion Data (2010)\nObservations:", 
+             sum(!is.na(border.df$state1_relig_shrt)))) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
   scale_fill_grey(start = 0.8, end = 0.2,
-                  name = "",
-                  labels = c("Christian", "Islamic", "Other")) +
-  theme(axis.text.x = element_text(size = 30),
-        legend.text = element_text(size = 35))
+                  name = "Majority religion",
+                  labels = c("Christian", "Islamic", "Other"))
 
 # Create small multiple table
 ### ------------------------------------------------------------------------ ###
@@ -1050,7 +1072,7 @@ gtsave(
 # Religion, categorical
 ggsave(
   plot = relig.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Religion.tiff", 
-  width =  8, height = 8, unit = "in",
+  width =  8, height = 4, unit = "in",
   dpi = 300
 )
 
