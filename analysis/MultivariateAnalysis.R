@@ -355,6 +355,16 @@ border.plots <- border.plots %>%
   nest() %>%
   ungroup()
 
+# Scale binary variables to 0-10
+#border.plots <- border.plots %>%
+#  mutate(data = ifelse(variable %in% 
+#                         c("Different majority religion", 
+#                           "Shared colonial history", 
+#                           "Common official language"), 
+#                       map(data, ~.x %>%
+#                             mutate(across(c("mean", "Mean"), ~.x * 10))),
+#                       data))
+
 # Create plots
 border.plots <- border.plots %>%
   mutate(plots = map(.x = data, ~ggplot(data = .x) +
@@ -362,8 +372,10 @@ border.plots <- border.plots %>%
                                 stat = "identity") +
                        geom_hline(mapping = aes(yintercept = Mean), 
                                   size = 2, linetype = 2) +
+                       scale_y_continuous(limits = c(-0.5, 10.5), breaks = c(0, 10), labels = c("0", "10")) +
                        theme_void() +
-                       theme(axis.text.x = element_text(size = 30))
+                       theme(axis.text.x = element_text(size = 30),
+                             axis.text.y = element_text(size = 30))
   ))
 
 # Plot for religion (categorical)
