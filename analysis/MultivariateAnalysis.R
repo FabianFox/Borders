@@ -367,16 +367,33 @@ border.plots <- border.plots %>%
 
 # Create plots
 border.plots <- border.plots %>%
-  mutate(plots = map(.x = data, ~ggplot(data = .x) +
-                       geom_bar(aes(x = fac_ind_sm(state1_typology), y = mean),
-                                stat = "identity") +
-                       geom_hline(mapping = aes(yintercept = Mean), 
-                                  size = 2, linetype = 2) +
-                       scale_y_continuous(limits = c(-0.5, 10.5), breaks = c(0, 10), labels = c("0", "10")) +
-                       theme_void() +
-                       theme(axis.text.x = element_text(size = 30),
-                             axis.text.y = element_text(size = 30))
-  ))
+  mutate(plots = ifelse(variable %in% c("Different majority religion", 
+                                        "Shared colonial history", 
+                                        "Common official language"),
+                        map(.x = data, ~ggplot(data = .x) +
+                              geom_bar(aes(x = fac_ind_sm(state1_typology), 
+                                           y = mean), stat = "identity") +
+                              geom_hline(mapping = aes(yintercept = Mean), 
+                                         size = 2, linetype = 2) +
+                              scale_y_continuous(limits = c(0, 1), 
+                                                 breaks = c(0, 1), 
+                                                 labels = c("0", "1"),
+                                                 position = "right") +
+                              theme_void() +
+                              theme(axis.text.x = element_text(size = 40),
+                                    axis.text.y = element_text(size = 40))),
+                        map(.x = data, ~ggplot(data = .x) +
+                              geom_bar(aes(x = fac_ind_sm(state1_typology), 
+                                           y = mean), stat = "identity") +
+                              geom_hline(mapping = aes(yintercept = Mean), 
+                                         size = 2, linetype = 2) +
+                              scale_y_continuous(limits = c(-0.5, 10.5), 
+                                                 breaks = c(0, 10), 
+                                                 labels = c("0", "10"),
+                                                 position = "right") +
+                              theme_void() +
+                              theme(axis.text.x = element_text(size = 40),
+                                    axis.text.y = element_text(size = 40)))))
 
 # Plot for religion (categorical)
 # Global distribution
@@ -496,6 +513,12 @@ iv <- c(
 model <- expand_grid(iv, dv) %>%
   mutate(formula = paste0(dv, " ~ ", iv))
 
+# Factors for multinomial regression
+# nnet::multinom 
+border.df <- border.df %>%
+  mutate(state1_typology_fct = fac_ind_en(state1_typology),
+         state1_typology_fct = fct_relevel(state1_typology_fct, "Checkpoint"))
+
 
 #                             LOGISTIC REGRESSION
 ### ------------------------------------------------------------------------ ###
@@ -585,14 +608,10 @@ multivariate.fig <- wrap_plots(result_full.df$plots)
 #                           MULTINOMIAL REGRESSION
 ### ------------------------------------------------------------------------ ###
 # Notes/issues:
+# - unimputed data
 # Large confidence intervals for...
 # - 'No man's land': variable 'colony' only two cases 
 # - Landmark border: variable 'state1_relig_shrt' no cases in category 'islm'
-
-# nnet::multinom 
-border.df <- border.df %>%
-  mutate(state1_typology_fct = fac_ind_en(state1_typology),
-         state1_typology_fct = fct_relevel(state1_typology_fct, "Checkpoint"))
 
 # Apply multinom
 model_mnom.df <- multinom(
@@ -810,7 +829,8 @@ model.df <- border.df %>%
   mutate(state1_typology = fac_ind_en(state1_typology),
          state1_typology = fct_relevel(state1_typology, "Checkpoint"),
          state1_relig_shrt = factor(state1_relig_shrt)) %>%
-  rename(state1_military = state1_military_expenditure_perc_gdp)
+  rename(state1_military = state1_military_expenditure_perc_gdp) %>%
+  relocate(refugees_incoming_log, .before = state1_relig_shrt)
 
 # Distribution of NA
 model.df %>%
@@ -839,7 +859,7 @@ imp_method[c("state1_relig_shrt")] <- "polyreg"
 
 # Create imputed datasets
 model_imp.df <- mice(model.df, m = 50, predictorMatrix = pred.mat, 
-                     method = imp_method, print = FALSE)           #set.seed
+                     method = imp_method, print = FALSE, seed = 2801)           #set.seed
 
 # Export to Stata
 # Adopted from: https://stackoverflow.com/questions/49965155/importing-mice-object-to-stata-for-analysis
@@ -867,7 +887,7 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off refugees_incoming_log, vce(cluster state1)
+# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log refugees_incoming_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off, vce(cluster state1)
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # est sto ml
@@ -933,8 +953,8 @@ ame_results.df <- ame_results.df %>%
                                               "GDP pc, ratio",
                                               "Polity, builder",
                                               "Polity, abs. difference",
-                                              "Military expenditures pc (log), builder",
-                                              "Terror incidents (log), builder",
+                                              "Military expenditure pc (log), builder",
+                                              "Terrorist incidents (log), builder",
                                               "Refugees, incoming (log)",
                                               "Religion, Muslim\n[Ref.: Christian]",
                                               "Religion, Other\n[Ref.: Christian]",
@@ -1077,7 +1097,7 @@ ggsave(
 # Table 1
 # Bivariate relationship
 gtsave(
-  border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Tab1 - Descriptive Statistics.png"
+  border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Tab1 - Descriptive Statistics_axis.png"
 )
 
 # Figure 3
