@@ -182,17 +182,18 @@ global_dist.df %>%
 border.df <- border.df %>%
   select(state1, state2, state1_typology, 
          # Economy
-         state1_gdp, state2_gdp, state1_gdp_log, state2_gdp_log, ratio_gdp,
+         state1_gdp_log, state2_gdp_log, ratio_gdp,
          # Polity
-         state1_polity, state2_polity, absdiff_pol,
+         state1_polity, absdiff_pol,
          # Security
-         state1_military_expenditure_perc_gdp, state2_military_expenditure_perc_gdp,
-         state1_nterror_log, state2_nterror_log,
+         state1_military_expenditure_perc_gdp,
+         state1_nterror_log, 
+         disp_from_2000_to_2010, 
          # Culture
-         state1_relig_shrt, state2_relig_shrt, diff_relig, diff_relig_shrt,
+         state1_relig_shrt, diff_relig_shrt,
          colony, comlang_off,
          # Controls
-         refugees_incoming_log, refugees_incoming_pc)
+         refugees_incoming_log)
 
 
 #                      DESCRIPTIVE STATISTICS & FIGURES
@@ -210,6 +211,7 @@ border_vars <- border.df %>%
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
+    disp_from_2000_to_2010,
     refugees_incoming_log,
     # culture
     diff_relig_shrt,
@@ -241,8 +243,8 @@ border_vars <- border_vars %>%
     variable,
     levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
                "absdiff_pol", "state1_military_expenditure_perc_gdp",
-               "state1_nterror_log", "refugees_incoming_log", 
-               "diff_relig_shrt", 
+               "state1_nterror_log", "disp_from_2000_to_2010",
+               "refugees_incoming_log", "diff_relig_shrt", 
                "colony", "comlang_off"),
     labels = c("GDP per capita (in USD), log",
                "GDP per capita (in USD), ratio",
@@ -250,6 +252,7 @@ border_vars <- border_vars %>%
                "Difference in political regimes",
                "Military expenditure (as % of GDP)",
                "Terrorist incidents (annual), log",
+               "Militarized disputes",
                "Stock of refugees from neighbor, log",
                "Different majority religion",
                "Shared colonial history",
@@ -258,6 +261,7 @@ border_vars <- border_vars %>%
                "CEPII (2011)",
                "CEPII (2011)",
                "COW: World Religion Data (2010)",
+               "COW: DyadMID (2000-2010)",
                "World Bank (2017)",
                "World Refugee Dataset (2015)",
                "World Bank (2017)",
@@ -287,6 +291,7 @@ border.plots <- border.df %>%
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
+    disp_from_2000_to_2010,
     refugees_incoming_log,
     # culture
     diff_relig_shrt,
@@ -320,6 +325,7 @@ border.plots <- border.plots %>%
               "Shared colonial history",
               "Common official language",
               "Different majority religion",
+              "Militarized disputes",
               "GDP per capita (in USD), ratio",
               "Stock of refugees from neighbor, log",
               "GDP per capita (in USD), log",
@@ -330,8 +336,8 @@ border.plots <- border.plots %>%
      variable,
      levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
                 "absdiff_pol", "state1_military_expenditure_perc_gdp",
-                "state1_nterror_log", "refugees_incoming_log", 
-                "diff_relig_shrt", 
+                "state1_nterror_log", "disp_from_2000_to_2010", 
+                "refugees_incoming_log", "diff_relig_shrt", 
                 "colony", "comlang_off"),
      labels = c("GDP per capita (in USD), log",
                 "GDP per capita (in USD), ratio",
@@ -339,6 +345,7 @@ border.plots <- border.plots %>%
                 "Difference in political regimes",
                 "Military expenditure (as % of GDP)",
                 "Terrorist incidents (annual), log",
+                "Militarized disputes",
                 "Stock of refugees from neighbor, log",
                 "Different majority religion",
                 "Shared colonial history",
@@ -367,7 +374,8 @@ border.plots <- border.plots %>%
 
 # Create plots
 border.plots <- border.plots %>%
-  mutate(plots = ifelse(variable %in% c("Different majority religion", 
+  mutate(plots = ifelse(variable %in% c("Militarized disputes",
+                                        "Different majority religion", 
                                         "Shared colonial history", 
                                         "Common official language"),
                         map(.x = data, ~ggplot(data = .x) +
@@ -489,6 +497,7 @@ iv <- c(
   "absdiff_pol", 
   "state1_military_expenditure_perc_gdp",
   "state1_nterror_log",
+  "disp_from_2000_to_2010",
   "refugees_incoming_log",
   "state1_relig_shrt",
   "diff_relig_shrt",
@@ -502,6 +511,7 @@ iv <- c(
   absdiff_pol + 
   state1_military_expenditure_perc_gdp +
   state1_nterror_log +
+  disp_from_2000_to_2010 + 
   refugees_incoming_log +
   state1_relig_shrt +
   diff_relig_shrt +
@@ -524,7 +534,7 @@ border.df <- border.df %>%
                           ##########################
 
 # Get the variables used in the multinomial model
-vars <- str_replace_all(paste0("state1_typology|", iv[[12]]), "[ +\n ]+", "|")
+vars <- str_replace_all(paste0("state1_typology|", iv[[13]]), "[ +\n ]+", "|")
 
 # Select models vars
 # Note: state1: clustervar
@@ -592,7 +602,7 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log refugees_incoming_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off, vce(cluster state1)
+# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.disp_from_2000_to_2010 refugees_incoming_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off, vce(cluster state1)
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # est sto ml
@@ -648,6 +658,7 @@ ame_results.df <- ame_results.df %>%
                                               "absdiff_pol", 
                                               "state1_military",
                                               "state1_nterror_log",
+                                              "disp_from_2000_to_2010",
                                               "refugees_incoming_log",
                                               "relig_muslim",
                                               "relig_other",
@@ -660,12 +671,13 @@ ame_results.df <- ame_results.df %>%
                                               "Polity, abs. difference",
                                               "Military expenditure (as % of GDP), builder",
                                               "Terrorist incidents (log), builder",
-                                              "Refugees, incoming (log)",
+                                              "Militarized disputes\n[Ref.: No]",
+                                              "Stock of refugees from neigbor (log)",
                                               "Religion, Muslim\n[Ref.: Christian]",
                                               "Religion, Other\n[Ref.: Christian]",
-                                              "Same religion",
-                                              "Colonial history",
-                                              "Common language"))))
+                                              "Same religion\n[Ref.: No]",
+                                              "Colonial history\n[Ref.: No]",
+                                              "Common language\n[Ref.: No]"))))
 
 # Plot
 # ---------------------------------------------------------------------------- #
@@ -706,10 +718,10 @@ ame_results.gt <- ame_results.df %>%
   pivot_longer(cols = c("coef", "se")) %>%
   pivot_wider(names_from = typology, values_from = value) %>%
   select(-name) %>%
-  mutate(Checkpoint = c("Base outcome", rep(NA, 23))) %>%
+  mutate(Checkpoint = c("Base outcome", rep(NA, 25))) %>%
   relocate(Checkpoint, .before = `barrier border`) %>%
-  set_names(nm = c("Independent variables", "'No man's land'", "Landmark", "Checkpoint", 
-              "Barrier", "Fortified"))
+  set_names(nm = c("Independent variables", "'No man's land'", "Landmark", 
+                   "Checkpoint", "Barrier", "Fortified"))
 
 # create gt-table
 ame_results.gt <- gt(ame_results.gt) %>%
@@ -730,7 +742,7 @@ imp_nest.df <- import("./output/imputed_data.rds") %>%
   group_by(imp_no) %>%
   nest() %>%
   mutate(formula = paste0("state1_typology", " ~ ", 
-                          str_replace_all(iv[12],
+                          str_replace_all(iv[13],
                                           "state1_military_expenditure_perc_gdp",
                                           "state1_military")))
 
@@ -793,7 +805,7 @@ ame_sd.df <- imp_ame.df %>%
 
 # Mean, SD, Mean +/- 1 SD
 # Continuous predictors
-pred <- colnames(ame_sd.df)[c(3, 7:12)]
+pred <- colnames(ame_sd.df)[c(3, 7:13)]
 pred[which("state1_military" == pred)] <- "state1_military_expenditure_perc_gdp"
 
 # Get distribution on continuous predictors
@@ -814,7 +826,8 @@ mean_sd.df <- border.df %>%
 # Fortified borders
 ame_sd.df %>%
   filter(category == "Fortified") %>%
-  select(state1_gdp_log, ratio_gdp, absdiff_pol, state1_military, state1_relig_shrtislm)
+  select(state1_gdp_log, ratio_gdp, state1_military, state1_nterror_log, 
+         disp_from_2000_to_2010)
 
 # Barrier borders
 ame_sd.df %>%
@@ -824,7 +837,13 @@ ame_sd.df %>%
 # Landmark borders
 ame_sd.df %>%
   filter(category == "Landmark") %>%
-  select(state1_gdp_log, ratio_gdp, state1_relig_shrtislm, diff_relig_shrt, comlang_off)
+  select(state1_gdp_log, ratio_gdp, disp_from_2000_to_2010, 
+         state1_relig_shrtislm, diff_relig_shrt, comlang_off)
+
+# No man's land borders
+ame_sd.df %>%
+  filter(category == "'No man's land'") %>%
+  select(state1_gdp_log, absdiff_pol, disp_from_2000_to_2010, refugees_incoming_log)
 
 # +/- 1 SD
 mean_sd.df
