@@ -796,7 +796,7 @@ ame_sd.df %>%
 
 # Mean, SD, Mean +/- 1 SD
 # Continuous predictors
-pred <- colnames(ame_sd.df)[c(3:12)]
+pred <- colnames(ame_sd.df)[c(3, 7:12)]
 pred[which("state1_military" == pred)] <- "state1_military_expenditure_perc_gdp"
 
 # Get distribution on continuous predictors
@@ -807,7 +807,25 @@ mean_sd.df <- border.df %>%
   select(mean, sd) %>%
   rownames_to_column(., var = "variable") %>%
   mutate(from = mean - sd,
-         to = mean + sd)
+         to = mean + sd, 
+         across(c(from, to), list(exp = ~if_else(str_detect(variable, "log"), 
+                                                 exp(.), NA_real_)),
+                .names = "{fn}_{col}"))
+
+# Used in manuscript
+# Fortified borders
+# AME 
+ame_sd.df %>%
+  filter(category == "Fortified") %>%
+  select(state1_gdp_log, ratio_gdp, absdiff_pol, state1_military, state1_relig_shrtislm)
+
+# +/- 1 SD
+mean_sd.df %>%
+  filter(variable %in% c("state1_gdp_log", "ratio_gdp", "absdiff_pol",
+                         "state1_military_expenditure_perc_gdp")) %>%
+  mutate(across(where(is.numeric), ~round(., 2)))
+
+
 
                           ##########################
                           #       EXPORT FIGS      #
