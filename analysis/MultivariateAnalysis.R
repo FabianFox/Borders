@@ -658,7 +658,7 @@ ame_results.df <- ame_results.df %>%
                                               "GDP pc, ratio",
                                               "Polity, builder",
                                               "Polity, abs. difference",
-                                              "Military expenditure pc (log), builder",
+                                              "Military expenditure (as % of GDP), builder",
                                               "Terrorist incidents (log), builder",
                                               "Refugees, incoming (log)",
                                               "Religion, Muslim\n[Ref.: Christian]",
@@ -791,9 +791,6 @@ imp_ame.df <- imp_ame.df %>%
 ame_sd.df <- imp_ame.df %>%
   unnest(imp_ame) 
 
-ame_sd.df %>%
-  select(category)
-
 # Mean, SD, Mean +/- 1 SD
 # Continuous predictors
 pred <- colnames(ame_sd.df)[c(3, 7:12)]
@@ -813,19 +810,24 @@ mean_sd.df <- border.df %>%
                 .names = "{fn}_{col}"))
 
 # Used in manuscript
+# AME
 # Fortified borders
-# AME 
 ame_sd.df %>%
   filter(category == "Fortified") %>%
   select(state1_gdp_log, ratio_gdp, absdiff_pol, state1_military, state1_relig_shrtislm)
 
+# Barrier borders
+ame_sd.df %>%
+  filter(category == "Barrier") %>%
+  select(absdiff_pol)
+
+# Landmark borders
+ame_sd.df %>%
+  filter(category == "Landmark") %>%
+  select(state1_gdp_log, ratio_gdp, state1_relig_shrtislm, diff_relig_shrt, comlang_off)
+
 # +/- 1 SD
-mean_sd.df %>%
-  filter(variable %in% c("state1_gdp_log", "ratio_gdp", "absdiff_pol",
-                         "state1_military_expenditure_perc_gdp")) %>%
-  mutate(across(where(is.numeric), ~round(., 2)))
-
-
+mean_sd.df
 
                           ##########################
                           #       EXPORT FIGS      #
