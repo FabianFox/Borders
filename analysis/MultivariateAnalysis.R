@@ -602,26 +602,31 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # mi import ice
 
 # * Multinomial regression
-# mi estimate : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.disp_from_2000_to_2010 refugees_incoming_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off, vce(cluster state1)
+# eststo ml: mi estimate, post : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.disp_from_2000_to_2010 refugees_incoming_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off, vce(cluster state1)
+
+# * export logits
+# esttab ml using "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\mlogit_logit_results.csv", unstack cells(b se t p ci) nostar plain replace
 
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
-# est sto ml
+# *eststo ml
 
-# forval i = 2/5 {
-#  est res ml
-#  mimrgns, dydx(*) pr(out(`i')) post
-# est sto ml`i'
+# forval i = 1/5 {
+#   est res ml
+#   mimrgns, dydx(*) pr(out(`i')) post
+#  est sto ml`i'
 # }
 
 # * Export results
-# esttab ml2 ml3 ml4 ml5 using "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\mlogit_results.csv", cells(b se t p ci) nostar plain replace
+# esttab ml1 ml2 ml3 ml4 ml5 using "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\mlogit_results.csv", cells(b se t p ci) nostar plain replace
 
 # Re-import results
 # ---------------------------------------------------------------------------- #
+
+# Average marginal effects
 # Load results
 ame_results.df <- import("./output/stata/mlogit_results.csv", skip = 2) %>%
   magrittr::set_colnames(c("variable", 
-                           # "checkpoint border", 
+                           "checkpoint border", 
                            "frontier border",
                            "landmark border",
                            "barrier border",
@@ -641,7 +646,7 @@ ame_results.df <- ame_results.df %>%
   filter(across(everything(), ~!is.na(.x))) %>%
   mutate(type = str_extract(variable, "coef$+|se$+|t$+|p$+|ci$+"),
          variable = str_replace(variable, "_coef$+|_se$+|_t$+|_p$+|_ci$+", "")) %>%
-  pivot_longer(2:5, names_to = "typology") %>%
+  pivot_longer(2:6, names_to = "typology") %>%
   pivot_wider(names_from = type, values_from = value) %>%
   separate(ci, into = c("conf.low", "conf.high"), sep = ",") %>%
   mutate_at(vars(3:8), as.numeric) %>%
@@ -698,7 +703,7 @@ result_mnom_ame.fig <- ame_results.df %>%
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(.~fac_ind_en(typology)) +
   scale_x_discrete(drop = FALSE) + 
-  ylim(-.2, .2) +
+  ylim(-.25, .25) +
   coord_flip() +
   labs(x = "", y = "") +
   theme.basic +
@@ -708,7 +713,7 @@ result_mnom_ame.fig <- ame_results.df %>%
         axis.text.x = element_text(angle = 0, hjust = 0.5),
         panel.spacing.x = unit(2, "lines"))
 
-# Regression table (Appendix)
+# Regression table (Appendix )
 # ---------------------------------------------------------------------------- #
 ame_results.gt <- ame_results.df %>% 
   mutate(pstars = ifelse(pstars == ".", "", pstars),
@@ -718,8 +723,7 @@ ame_results.gt <- ame_results.df %>%
   pivot_longer(cols = c("coef", "se")) %>%
   pivot_wider(names_from = typology, values_from = value) %>%
   select(-name) %>%
-  mutate(Checkpoint = c("Base outcome", rep(NA, 25))) %>%
-  relocate(Checkpoint, .before = `barrier border`) %>%
+  relocate("checkpoint border", .before = `barrier border`) %>%
   set_names(nm = c("Independent variables", "'No man's land'", "Landmark", 
                    "Checkpoint", "Barrier", "Fortified"))
 
@@ -753,18 +757,18 @@ imp_nest.df <- imp_nest.df %>%
                                 family = binomial(link = "logit"))))
 
 # Combine dataframes with categories in order to map margins-command
-imp_nest.df <- imp_nest.df %>%
+imp_nest_long.df <- imp_nest.df %>%
   mutate(category = c("'No man's land';Checkpoint;Fortified;Barrier;Landmark")) %>%
   separate_rows(category, sep = ";")
 
 # Apply margins-command
-imp_nest.df <- imp_nest.df %>%
+imp_nest_long.df <- imp_nest_long.df %>%
   mutate(ame = pmap(list(model, category, data),
                     ~summary(margins(model = ..1, category = ..2, data = ..3,  change = "sd")) %>%
                       select(factor, AME)))
 
 # Retain only AMEs and prepare for combining using Amelia::mi.meld
-imp_ame.df <- imp_nest.df %>%
+imp_ame.df <- imp_nest_long.df %>%
   unnest(cols = ame) %>%
   select(imp_no, category, factor, ame = AME) %>%
   spread(factor, ame) %>%
@@ -796,7 +800,6 @@ imp_ame.df <- imp_ame.df %>%
   mutate(imp_ame = map(.x = data, 
                        ~meld_coef_fun(.x)))
 
-
 # Computations for the results section
 # ---------------------------------------------------------------------------- #
 # change from mean(df$var) +/- sd(df$var)
@@ -805,7 +808,7 @@ ame_sd.df <- imp_ame.df %>%
 
 # Mean, SD, Mean +/- 1 SD
 # Continuous predictors
-pred <- colnames(ame_sd.df)[c(3, 7:13)]
+pred <- colnames(ame_sd.df)[c(3, 8:13)]
 pred[which("state1_military" == pred)] <- "state1_military_expenditure_perc_gdp"
 
 # Get distribution on continuous predictors
@@ -834,6 +837,11 @@ ame_sd.df %>%
   filter(category == "Barrier") %>%
   select(absdiff_pol)
 
+# Checkpoint borders
+ame_sd.df %>%
+  filter(category == "Checkpoint") %>%
+  select(state1_gdp_log, disp_from_2000_to_2010, comlang_off)
+
 # Landmark borders
 ame_sd.df %>%
   filter(category == "Landmark") %>%
@@ -847,6 +855,121 @@ ame_sd.df %>%
 
 # +/- 1 SD
 mean_sd.df
+
+# Plot main effects with ggeffects
+# ---------------------------------------------------------------------------- #
+imp_nest.ggeffect <- imp_nest.df %>%
+  mutate(prediction = map(model, ~ggeffect(.x, terms = "state1_gdp_log") %>%
+                            mutate(response.level = 
+                                     if_else(response.level == "X.No.man.s.land.",
+                                             "'No man's land'", response.level),
+                                   response.level = factor(response.level, 
+                                                           levels = 
+                                                             c("'No man's land'",
+                                                               "Landmark", 
+                                                               "Checkpoint",
+                                                               "Barrier", 
+                                                               "Fortified")))))
+
+# Pool predictions
+imp_predict.df <- pool_predictions(imp_nest.ggeffect$prediction)
+
+# Plot
+ggplot(imp_predict.df, aes(x, predicted)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, ), alpha = .1) +
+  facet_wrap(~response.level) +
+  scale_x_continuous(breaks = log1p(c(400, 1000, 3000, 8000, 20000, 80000)), 
+                     labels = c(400, 1000, 3000, 8000, 20000, 80000)) + 
+  labs(
+    title = "",
+    x = "", y = "") +
+  theme_minimal()
+
+# Import logits (Appendix: Table A1)
+# ---------------------------------------------------------------------------- #
+# Load results
+logit_results.df <- import("./output/stata/mlogit_logit_results.csv", skip = 3) %>%
+  magrittr::set_colnames(c("variable", 
+                           "checkpoint border", 
+                           "frontier border",
+                           "landmark border",
+                           "barrier border",
+                           "fortified border")) %>%
+  slice(1:n()-1) %>%
+  select(-"checkpoint border")
+
+# Create a tidy df
+logit_results.df[seq(2, nrow(logit_results.df), 5), "variable"] <- paste0(logit_results.df[seq(1, nrow(logit_results.df), 5), "variable"], "_se")
+logit_results.df[seq(3, nrow(logit_results.df), 5), "variable"] <- paste0(logit_results.df[seq(1, nrow(logit_results.df), 5), "variable"], "_t")
+logit_results.df[seq(4, nrow(logit_results.df), 5), "variable"] <- paste0(logit_results.df[seq(1, nrow(logit_results.df), 5), "variable"], "_p")
+logit_results.df[seq(5, nrow(logit_results.df), 5), "variable"] <- paste0(logit_results.df[seq(1, nrow(logit_results.df), 5), "variable"], "_ci")
+logit_results.df[seq(1, nrow(logit_results.df), 5), "variable"] <- paste0(logit_results.df[seq(1, nrow(logit_results.df), 5), "variable"], "_coef")
+
+logit_results.df <- logit_results.df %>%
+  mutate(across(everything(), ~car::recode(.x,  "c('0', '.', '.,.') = NA_character_"))) %>%
+  filter(across(everything(), ~!is.na(.x))) %>%
+  mutate(type = str_extract(variable, "coef$+|se$+|t$+|p$+|ci$+"),
+         variable = str_replace(variable, "_coef$+|_se$+|_t$+|_p$+|_ci$+", "")) %>%
+  pivot_longer(2:5, names_to = "typology") %>%
+  pivot_wider(names_from = type, values_from = value) %>%
+  separate(ci, into = c("conf.low", "conf.high"), sep = ",") %>%
+  mutate_at(vars(3:8), as.numeric) %>%
+  mutate(variable = case_when(
+    variable == "2.state1_relig_shrt" ~ "relig_muslim",
+    variable == "3.state1_relig_shrt" ~ "relig_other",
+    TRUE ~ as.character(variable)),
+    variable = str_replace_all(variable, "1\\.", "")) %>%
+  mutate(pstars = stars.pval(p),
+         variable = fct_rev(factor(variable, 
+                                   levels = c("state1_gdp_log",
+                                              "ratio_gdp",
+                                              "state1_polity",  
+                                              "absdiff_pol", 
+                                              "state1_military",
+                                              "state1_nterror_log",
+                                              "disp_from_2000_to_2010",
+                                              "refugees_incoming_log",
+                                              "relig_muslim",
+                                              "relig_other",
+                                              "diff_relig_shrt",
+                                              "colony", 
+                                              "comlang_off",
+                                              "_cons"),
+                                   labels = c("GDP pc (log), builder",
+                                              "GDP pc, ratio",
+                                              "Polity, builder",
+                                              "Polity, abs. difference",
+                                              "Military expenditure (as % of GDP), builder",
+                                              "Terrorist incidents (log), builder",
+                                              "Militarized disputes\n[Ref.: No]",
+                                              "Stock of refugees from neigbor (log)",
+                                              "Religion, Muslim\n[Ref.: Christian]",
+                                              "Religion, Other\n[Ref.: Christian]",
+                                              "Same religion\n[Ref.: No]",
+                                              "Colonial history\n[Ref.: No]",
+                                              "Common language\n[Ref.: No]",
+                                              "Constant"))))
+
+# GT table
+logit_results.gt <- logit_results.df %>% 
+  mutate(pstars = ifelse(pstars == ".", "", pstars),
+         coef = paste0(round(coef, 3), pstars),
+         se = paste0("(", round(se, 3), ")")) %>%
+  select(variable, typology, coef, se) %>%
+  pivot_longer(cols = c("coef", "se")) %>%
+  pivot_wider(names_from = typology, values_from = value) %>%
+  select(-name) %>%
+  mutate(`checkpoint border` = rep(NA, 28)) %>%
+  relocate("checkpoint border", .before = `barrier border`) %>%
+  set_names(nm = c("Independent variables", "'No man's land'", "Landmark", 
+                   "Checkpoint", "Barrier", "Fortified"))
+
+# create gt-table
+logit_results.gt <- gt(logit_results.gt) %>%
+  fmt_missing(columns = everything(), missing_text = "") %>%
+  cols_align(align = "left", columns = c("Independent variables")) %>%
+  cols_align(align = "right", columns = c(2:6))
 
                           ##########################
                           #       EXPORT FIGS      #
@@ -886,3 +1009,5 @@ ggsave(
 # Figure A1
 # Regression table
 gtsave(data = ame_results.gt, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Tab2 - Multinomial regression.rtf")
+
+gtsave(data = logit_results.gt, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Tab3 - Multinomial regression - Logit.rtf")
