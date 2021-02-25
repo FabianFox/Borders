@@ -610,6 +610,7 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # *eststo ml
 
+# * AME for all response categories (see: https://www.statalist.org/forums/forum/general-stata-discussion/general/1591606-marginal-effects-of-multinomial-logit)
 # forval i = 1/5 {
 #   est res ml
 #   mimrgns, dydx(*) pr(out(`i')) post
