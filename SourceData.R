@@ -350,8 +350,8 @@ border.df <- border.df %>%
 # Missing values filled by Pew Research Center: Religious Composition by Country, 2010-2050
 # retrieved from: https://www.pewforum.org/2015/04/02/religious-projection-table/2010/number/all/
 # accessed: 2019/05/31
-border.df[border.df$state1 =="SSD",]$state1_relig <- "chrst"
-border.df[border.df$state2 =="SSD",]$state2_relig <- "chrst"
+border.df[border.df$state1 == "SSD",]$state1_relig <- "chrst"
+border.df[border.df$state2 == "SSD",]$state2_relig <- "chrst"
 
 # Create variables: 
 # - muslim majority (binary) 
@@ -369,16 +369,16 @@ border.df <- border.df %>%
          diff_relig = if_else(state1_relig != state2_relig, 1, 0),
          diff_relig_shrt = if_else(state1_relig_shrt != state2_relig_shrt, 1, 0))
 
-# COW: Dyadic MIDs and Dyadic Wars V3.1
+# COW: Dyadic MIDs and Dyadic Wars V4.1
 # Variable: statea, stateb, strtyr, endyear, year, outcome
-# Year: 2010 (latest)
+# Year: 2014
 # Note: variable highact entails categories for 'fortify border' & 'border violation'
 ## -------------------------------------------------------------------------- ##
 # retrieved from http://www.correlatesofwar.org/data-sets/MIDs
-# direct: https://correlatesofwar.org/data-sets/MIDs/dyadic-mids-and-dyadic-wars-v3.1/view
+# landing page: https://correlatesofwar.org/data-sets/MIDs/dyadic_mid_4-01.zip/view
 
 # Preprocess MID
-dispute.df <- import("./data/dyadic_mid_31_may_2018.dta") %>%
+dispute.df <- import("./data/dyadic_mid_4.01.dta") %>%
   group_by(statea, stateb) %>%
   filter(row_number(desc(year)) == 1,
          strtyr >= 2000) %>%
@@ -387,15 +387,15 @@ dispute.df <- import("./data/dyadic_mid_31_may_2018.dta") %>%
                               destination = "iso3c", custom_match = custom.match),
          state2 = countrycode(sourcevar = stateb, origin = "cown", 
                               destination = "iso3c", custom_match = custom.match),
-         disp_from_2000_to_2010 = 1) %>%
+         disp_from_2000_to_2014 = 1) %>%
   select(state1, state2, disp_year = year, 
          disp_outcome = outcome, 
-         disp_from_2000_to_2010)
+         disp_from_2000_to_2014)
 
 # Join to source data 
 border.df <- border.df %>%
   left_join(dispute.df) %>%
-  mutate(disp_from_2000_to_2010 = if_else(is.na(disp_from_2000_to_2010), 0, 1))
+  mutate(disp_from_2000_to_2014 = if_else(is.na(disp_from_2000_to_2014), 0, 1))
 
 # START: Global Terrorism Database 
 # Variable:
@@ -498,67 +498,31 @@ border.df <- border.df %>%
          refugees_outgoing_pc_log = log1p(refugees_outgoing_pc),
          refugees_outgoing_agg_pc_log = log1p(refugees_outgoing_agg_pc))
 
-# CEPII GeoDist
-# Variable: Common language, colonial ties, area
+# CEPII Gravity (Version: 2021/02/06)
+# Variable: Colonies & religious similarity
 ## -------------------------------------------------------------------------- ##
-# retrieved from: Mayer & Zignago (2011), Link: http://www.cepii.fr/CEPII/en/bdd_modele/presentation.asp?id=6
-
-# Dyadic version
-# missing in dist.df - "COD" "LIE" "MCO" "MNE" "ROU" "SRB" "SSD" "TLS" "XKX"
-dist.df <- import("./data/dist_cepii.xls") %>%
-  filter(iso_o != iso_d) %>%
-  select(state1 = iso_o, state2 = iso_d, colony, comlang_off) %>%
-  distinct(state1, state2, .keep_all = TRUE)
+# retrieved from: http://www.cepii.fr/CEPII/en/bdd_modele/presentation.asp?id=8
+# missing in gravity.df: XKX (Kosovo)
+gravity.df <- import("./data/Gravity_V202102.rds") %>%
+  filter(iso3_o != iso3_d,
+         year == 2019) %>% # no self-ties
+  select(state1 = iso3_o, state2 = iso3_d, state1_colonizer = heg_o, 
+         state2_colonizer = heg_d, colony = col_dep_ever, 
+         comlang_off, relig_prox = comrelig)
 
 # Join to border.df
 border.df <- border.df %>%
-  left_join(dist.df)
-
-# Monadic version of CEPII GeoDist
-# missing in geo.df - "COD" "LIE" "MCO" "MNE" "ROU" "SRB" "SSD" "TLS" "XKX"
-geo.df <- import("./data/geo_cepii.xls") %>%
-  select(state1 = iso3, starts_with(c("langoff", "colonizer")), state1_area = area) %>%
-  mutate(across(everything(), ~na_if(., y = "."))) %>%
-  unite("state1_langoff", starts_with("langoff"), sep = "|", na.rm = TRUE, remove = TRUE) %>%
-  unite("state1_colony", starts_with("colonizer"), sep = "|", na.rm = TRUE, remove = TRUE)
+  left_join(gravity.df, by = c("state1", "state2"))
 
 # Add missing countries via CIA World Factbook
-geo.df <- geo.df %>%
-  add_row(state1 = c("COD", "LIE", "MCO", "MNE", "ROU", "SRB", "SSD", "TLS", "XKX"),
-          state1_langoff = c("French", "German", "French", "Montenegrin", 
-                             "Romanian", "Serbian", "English", "Tetun|Portuguese", "Albanian|Serbian"),
-          state1_colony = c("BEL", "", "", "TUR", "RUS, TUR", "", "GBR, SDN", "PRT, IDN", "TUR, SRB"),
-          state1_area = c(2344858, 160, 2, 13812, 238391, 77474, 644329, 14874, 10887)) %>%
-  distinct(state1, .keep_all = TRUE)
-
-# Join to border.df
-border.df <- border.df %>%
-  left_join(y = geo.df)
-
-# Add neighbour data
-swap.df <- geo.df %>%
-  rename_with(~str_replace(., "state1", "state2"), everything())
-
-# Join to border.df 
-border.df <- border.df %>%
-  left_join(y = swap.df)
-         
-# Use monadic data (geo.df) to replace missing values in dist.df
-border.df <- border.df %>%
-  mutate(
-    colony = case_when(
-      is.na(colony) & str_detect(paste(state1_colony, state2_colony, sep = ", "), 
-                                 paste(state1, state2, sep = "|")) == TRUE ~ 1,
-      !is.na(colony) ~ colony,
-      TRUE ~ 0),
-    comlang_off = case_when(
-      is.na(comlang_off) & str_detect(state1_langoff, state2_langoff) == TRUE ~ 1,
-      !is.na(comlang_off) ~ comlang_off,
-      TRUE ~ 0))
-
-# Remove auxiliary columns
-border.df <- border.df %>%
-  select(-c(state1_langoff, state1_colony, state2_langoff, state2_colony))
+border.df[border.df$state1 == "ALB" & border.df$state2 == "XKX", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 0, 0, 1)
+border.df[border.df$state1 == "MKD" & border.df$state2 == "XKX", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 0, 0, 0)
+border.df[border.df$state1 == "MNE" & border.df$state2 == "XKX", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 0, 0, 0)
+border.df[border.df$state1 == "SRB" & border.df$state2 == "XKX", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(1, 0, 1, 1)
+border.df[border.df$state1 == "XKX" & border.df$state2 == "ALB", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 0, 0, 1)
+border.df[border.df$state1 == "XKX" & border.df$state2 == "MKD", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 0, 0, 0)
+border.df[border.df$state1 == "XKX" & border.df$state2 == "MNE", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 0, 0, 0)
+border.df[border.df$state1 == "XKX" & border.df$state2 == "SRB", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 1, 1, 1)
 
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
