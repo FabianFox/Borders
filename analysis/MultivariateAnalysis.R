@@ -120,7 +120,8 @@ border.df %>%
   summarise(count = n()) %>%
   mutate(group_n = sum(count),
          perc = count / group_n * 100, continent1 = "World") %>%
-  mutate(rounded_perc = round(perc, digit = 1))
+  mutate(rounded_perc = round(perc, digit = 1)) %>%
+  arrange(fac_ind_en(state1_typology))
 
 # Only the global distribution
 ind_perc.fig <- ind_perc.df %>%
@@ -681,7 +682,7 @@ ame_results.df <- ame_results.df %>%
                                               "Stock of refugees from neigbor (log)",
                                               "Religion, Muslim\n[Ref.: Christian]",
                                               "Religion, Other\n[Ref.: Christian]",
-                                              "Same religion\n[Ref.: No]",
+                                              "Different religion\n[Ref.: No]",
                                               "Colonial history\n[Ref.: No]",
                                               "Common language\n[Ref.: No]"))))
 
@@ -714,7 +715,7 @@ result_mnom_ame.fig <- ame_results.df %>%
         axis.text.x = element_text(angle = 0, hjust = 0.5),
         panel.spacing.x = unit(2, "lines"))
 
-# Regression table (Appendix )
+# Regression table (Appendix A1)
 # ---------------------------------------------------------------------------- #
 ame_results.gt <- ame_results.df %>% 
   mutate(pstars = ifelse(pstars == ".", "", pstars),
@@ -762,7 +763,7 @@ imp_nest_long.df <- imp_nest.df %>%
   mutate(category = c("'No man's land';Checkpoint;Fortified;Barrier;Landmark")) %>%
   separate_rows(category, sep = ";")
 
-# Apply margins-command
+# Apply margins-command (here: sd-change; to replicate stata use "dydx")
 imp_nest_long.df <- imp_nest_long.df %>%
   mutate(ame = pmap(list(model, category, data),
                     ~summary(margins(model = ..1, category = ..2, data = ..3,  change = "sd")) %>%
@@ -947,7 +948,7 @@ logit_results.df <- logit_results.df %>%
                                               "Stock of refugees from neigbor (log)",
                                               "Religion, Muslim\n[Ref.: Christian]",
                                               "Religion, Other\n[Ref.: Christian]",
-                                              "Same religion\n[Ref.: No]",
+                                              "Different religion\n[Ref.: No]",
                                               "Colonial history\n[Ref.: No]",
                                               "Common language\n[Ref.: No]",
                                               "Constant"))))
