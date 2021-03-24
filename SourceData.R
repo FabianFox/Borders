@@ -201,117 +201,6 @@ border.df <- border.df %>%
   mutate(diff_pol = state1_polity - state2_polity,
          absdiff_pol = abs(state1_polity - state2_polity))
 
-# Global Transnational Mobility
-# Variable: Estimated trips
-# Year: 2016
-# retrieved from Recchi et al. (2019) "Estimating Transnational Human Mobility 
-#                                      on a Global Scale"
-## -------------------------------------------------------------------------- ##
-# (1) Load and filter to 2016
-gtm.df <- import("./data/Global_Transnational_Mobility_dataset_v1.0.csv") %>%
-  select(3:7) %>%
-  filter(year == 2016) %>%
-  select(-year)
-
-# (2) Join to border.df
-border.df <- border.df %>%
-  left_join(y = gtm.df, by = c("state1" = "source_iso3", "state2" = "target_iso3")) %>%
-  rename(trips_outgoing = estimated_trips, 
-         dist_gtm = dist) 
-
-# (3) Create a column for travels TO state1 FROM state2
-gtm.df <- gtm.df %>%
-  rename(trips_incoming = estimated_trips)
-
-# (4) Join to border.df
-border.df <- border.df %>%
-  select(-dist_gtm) %>%
-  left_join(y = gtm.df, by = c("state1" = "target_iso3", "state2" = "source_iso3")) %>%
-  mutate(trips_outgoing_pc = trips_outgoing / state1_pop,
-         trips_incoming_pc = trips_incoming / state2_pop,
-         trips_outgoing_log = log1p(trips_outgoing),
-         trips_incoming_log = log1p(trips_incoming),
-         trips_outgoing_pc_log = log1p(trips_outgoing_pc),
-         trips_incoming_pc_log = log1p(trips_incoming_pc))
-
-# Visa Network Data
-## -------------------------------------------------------------------------- ##
-# retrieved from https://www.fiw.uni-bonn.de/demokratieforschung/personen/laube/visanetworkdata
-
-# (1) Load data
-visa <- read_xls(path = "./data/Visa Network Data_1969_2010.xls",
-                 sheet = 2, range = "C5:FN172", 
-                 col_types = c("text", rep("numeric", 167)), 
-                 na = "/")
-
-# (2) Prepare data
-# Delete unnecessary rows and columns
-visa <- visa[-1,]
-visa <- visa[,-2]
-
-# Self-ties are included as "NA", however, they should be coded as "0".
-visa[is.na(visa)] <- 0
-
-# Rename the first column (country IDs) and unambiguous country names
-visa <- visa %>%
-  rename(Name = "Home country:", 
-         "Central African Republic" = "Central African Rep.", 
-         "Comoro Islands" = "Comores Islands",
-         "North Korea" = "Korea (Peoples Rep.)",
-         "Swaziland" = "Swasiland",
-         "Kyrgyzstan" = "Kyrgystan")
-
-# Transform to common ISO3 codes
-iso3 <- countrycode(colnames(visa)[2:167], "country.name.en", "iso3c")
-
-# As a matrix object
-visa.mat <- as.matrix(visa[,2:167])
-
-# Use ISO3 codes as row and column names
-rownames(visa.mat) <- iso3
-colnames(visa.mat) <- iso3
-
-# Igraph object
-# Step 1: Create an igraph object
-visa.graph <- igraph::graph.adjacency(visa.mat, mode = "directed",
-                                      diag = FALSE, add.colnames = TRUE)
-
-# Step 2: Transform into an edgelist 
-visa.edge <- igraph::get.edgelist(visa.graph, names = TRUE)
-
-# Edgelist (dyadic format)
-# Step 1: Transform the edgelist into a dataframe
-visa.edge <- tibble(
-  from.no = visa.edge[,1],
-  to.no = visa.edge[,2])
-
-# Step 2: Create a lookup table for matching
-lookup <- tibble(
-  country = colnames(visa.mat),
-  no = 1:166)
-
-# Step 3: Replace numbers with ISO3 codes
-visa.edge$state1 <- lookup[match(visa.edge$from.no, lookup$no),]$country
-visa.edge$state2 <- lookup[match(visa.edge$to.no, lookup$no),]$country
-
-# Step 4: Remove unnecessary variables and add a column that tells us whether a visa is waived = 1
-visa.edge <- visa.edge %>%
-  mutate(visa = 1) %>%
-  select(-from.no, -to.no)
-
-# (3) Match data sets
-# (A) Identify visa waivers
-border.df <- border.df %>%
-  left_join(y = visa.edge) %>%
-  mutate(visa.available = match(border.df$state1, colnames(visa.mat)))
-
-# (B) Identify cases with visa restrictions and cases that are NA
-border.df$visa[is.na(border.df$visa) & !is.na(border.df$visa.available)] <- 0
-
-# Remove auxiliary variables
-border.df <- border.df %>%
-  select(-visa.available)
-
 # COW: World Religion Data
 # Year: 2010
 # retrieved from http://www.correlatesofwar.org/data-sets/world-religion-data
@@ -669,7 +558,7 @@ border.df <- border.df %>%
 # Function to create a dyad identifier 
 # from: https://stackoverflow.com/questions/52316998/create-unique-id-for-dyads-non-directional
 
-dyadId_fun <- function(x,y) paste(sort(c(x, y)), collapse="_")
+dyadId_fun <- function(x,y) paste(sort(c(x, y)), collapse = "_")
 dyadId_fun <- Vectorize(dyadId_fun)
 
 # Apply the function
