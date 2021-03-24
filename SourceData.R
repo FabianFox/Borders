@@ -413,6 +413,15 @@ border.df[border.df$state1 == "XKX" & border.df$state2 == "MKD", c("state1_colon
 border.df[border.df$state1 == "XKX" & border.df$state2 == "MNE", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 0, 0, 0)
 border.df[border.df$state1 == "XKX" & border.df$state2 == "SRB", c("state1_colonizer", "state2_colonizer", "colony", "comlang_off")] <- c(0, 1, 1, 1)
 
+# Create a variable: (0) no colonial history, (1) colonizer, (2) colonized
+border.df <- border.df %>%
+  mutate(colonial_status = case_when(
+    state1_colonizer == 0 & state2_colonizer == 0 ~ "no colony",
+    state1_colonizer == 1 & state2_colonizer == 0 ~ "colonizer",
+    state1_colonizer == 0 & state2_colonizer == 1 ~ "colonized",
+    TRUE ~ NA_character_
+  ))
+
 # The CIA World Factbook 
 ## -------------------------------------------------------------------------- ##
 # - Length of shared borders
