@@ -144,19 +144,20 @@ ind_perc_region.fig <- border.df %>%
   ggplot(mapping = aes(x = fac_ind_en(state1_typology), y = perc)) +
   geom_bar(stat = "identity") +
   geom_text(stat = "identity", aes(label = paste0("N = ", count)), vjust = -0.3,
-            size = 2.8) +
+            size = 4) +
   facet_rep_wrap(~factor(continent1, 
                      levels = c("Africa", "Americas", "Asia", "Europe", "World"),
                      labels = c("Africa", "North & South America", "Asia (incl. Oceania)", 
                                 "Europe", "Global distribution")),
-                 repeat.tick.labels = "top") +
+                 repeat.tick.labels = "bottom") +
   labs(x = "", y = "") +
   theme.basic +
-  theme(axis.text = element_text(size = 14),
-        axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
         strip.text = element_text(size = 14),
         panel.spacing.y = unit(5, "lines")) +
-  scale_y_continuous(labels = function(x) paste0(x, "%"), expand = expansion(mult = c(0, .1)))
+  scale_y_continuous(labels = function(x) paste0(x, "%"),
+                     expand = expansion(mult = c(0, .1)))
 
 # Round global distribution (regions)
 global_dist.df <- border.df %>%
@@ -183,7 +184,7 @@ global_dist.df %>%
 ### ------------------------------------------------------------------------ ###
 # Limit data to variables used in the analysis
 border.df <- border.df %>%
-  select(state1, state2, state1_typology, 
+  select(state1, state2, dyadID, state1_typology, 
          # Economy
          state1_gdp_log, state2_gdp_log, ratio_gdp,
          # Polity
@@ -191,9 +192,10 @@ border.df <- border.df %>%
          # Security
          state1_military_expenditure_perc_gdp,
          state1_nterror_log, 
-         disp_from_2000_to_2010, 
+         disp_from_2000_to_2014, 
          # Culture
-         state1_relig_shrt, diff_relig_shrt,
+         state1_relig_shrt, 
+         relig_prox,
          colony, comlang_off,
          # Controls
          refugees_incoming_log)
@@ -214,7 +216,7 @@ border_vars <- border.df %>%
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
-    disp_from_2000_to_2010,
+    disp_from_2000_to_2014,
     refugees_incoming_log,
     # culture
     diff_relig_shrt,
@@ -246,7 +248,7 @@ border_vars <- border_vars %>%
     variable,
     levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
                "absdiff_pol", "state1_military_expenditure_perc_gdp",
-               "state1_nterror_log", "disp_from_2000_to_2010",
+               "state1_nterror_log", "disp_from_2000_to_2014",
                "refugees_incoming_log", "diff_relig_shrt", 
                "colony", "comlang_off"),
     labels = c("GDP per capita (in USD), log",
@@ -264,7 +266,7 @@ border_vars <- border_vars %>%
                "CEPII (2011)",
                "CEPII (2011)",
                "COW: World Religion Data (2010)",
-               "COW: DyadMID (2000-2010)",
+               "COW: DyadMID (2000-2014)",
                "World Bank (2017)",
                "World Refugee Dataset (2015)",
                "World Bank (2017)",
@@ -294,7 +296,7 @@ border.plots <- border.df %>%
     # security
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
-    disp_from_2000_to_2010,
+    disp_from_2000_to_2014,
     refugees_incoming_log,
     # culture
     diff_relig_shrt,
@@ -339,7 +341,7 @@ border.plots <- border.plots %>%
      variable,
      levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
                 "absdiff_pol", "state1_military_expenditure_perc_gdp",
-                "state1_nterror_log", "disp_from_2000_to_2010", 
+                "state1_nterror_log", "disp_from_2000_to_2014", 
                 "refugees_incoming_log", "diff_relig_shrt", 
                 "colony", "comlang_off"),
      labels = c("GDP per capita (in USD), log",
@@ -476,7 +478,7 @@ border_vars.plot <- gt(border_vars) %>%
 
 # Multinomial regression:
 # - The measure for military disputes behaves badly because several categories
-#   are not involved in any disputes (disp_from_2000_to_2010)
+#   are not involved in any disputes (disp_from_2000_to_2014)
 
 # Prepare models
 ### ------------------------------------------------------------------------ ###
@@ -500,10 +502,9 @@ iv <- c(
   "absdiff_pol", 
   "state1_military_expenditure_perc_gdp",
   "state1_nterror_log",
-  "disp_from_2000_to_2010",
-  "refugees_incoming_log",
+  "disp_from_2000_to_2014",
   "state1_relig_shrt",
-  "diff_relig_shrt",
+  "relig_prox",
   "colony", 
   "comlang_off",
 
@@ -514,10 +515,9 @@ iv <- c(
   absdiff_pol + 
   state1_military_expenditure_perc_gdp +
   state1_nterror_log +
-  disp_from_2000_to_2010 + 
-  refugees_incoming_log +
+  disp_from_2000_to_2014 + 
   state1_relig_shrt +
-  diff_relig_shrt +
+  relig_prox +
   colony +
   comlang_off"
   )
@@ -537,18 +537,20 @@ border.df <- border.df %>%
                           ##########################
 
 # Get the variables used in the multinomial model
-vars <- str_replace_all(paste0("state1_typology|", iv[[13]]), "[ +\n ]+", "|")
+vars <- str_replace_all(paste0("state1_typology|", iv[[12]]), "[ +\n ]+", "|")
 
 # Select models vars
-# Note: state1: clustervar
+# Note: 
+# - state1: clustervar
+# - dyadID: clustervar
 model.df <- border.df %>%
-  select(matches(vars), state1) %>%
+  select(matches(vars), state1, dyadID) %>%
   select(-c(1:5, "state1_typology_fct")) %>%
   mutate(state1_typology = fac_ind_en(state1_typology),
          state1_typology = fct_relevel(state1_typology, "Checkpoint"),
          state1_relig_shrt = factor(state1_relig_shrt)) %>%
-  rename(state1_military = state1_military_expenditure_perc_gdp) %>%
-  relocate(refugees_incoming_log, .before = state1_relig_shrt)
+  rename(state1_military = state1_military_expenditure_perc_gdp) 
+# relocate(refugees_incoming_log, .before = state1_relig_shrt)
 
 # Distribution of NA
 model.df %>%
@@ -567,6 +569,7 @@ pred.mat <- mice.mat$predictorMatrix
 # Do not use for imputation
 pred.mat[, c("state1_typology")] <- 0
 pred.mat[, c("state1")] <- 0
+pred.mat[, c("dyadID")] <- 0
 
 # Edit imputation method
 imp_method <- mice.mat$method
@@ -577,7 +580,7 @@ imp_method[c("state1_relig_shrt")] <- "polyreg"
 
 # Create imputed datasets
 model_imp.df <- mice(model.df, m = 50, predictorMatrix = pred.mat, 
-                     method = imp_method, print = FALSE, seed = 2801)           #set.seed
+                     method = imp_method, print = FALSE, seed = 2503)           # set.seed (init. sub.: 2801)
 
 # Export to Stata
 # Adopted from: https://stackoverflow.com/questions/49965155/importing-mice-object-to-stata-for-analysis
@@ -667,11 +670,10 @@ ame_results.df <- ame_results.df %>%
                                               "absdiff_pol", 
                                               "state1_military",
                                               "state1_nterror_log",
-                                              "disp_from_2000_to_2010",
-                                              "refugees_incoming_log",
+                                              "disp_from_2000_to_2014",
                                               "relig_muslim",
                                               "relig_other",
-                                              "diff_relig_shrt",
+                                              "relig_prox",
                                               "colony", 
                                               "comlang_off"),
                                    labels = c("GDP pc (log), builder",
@@ -681,10 +683,9 @@ ame_results.df <- ame_results.df %>%
                                               "Military expenditure (as % of GDP), builder",
                                               "Terrorist incidents (log), builder",
                                               "Militarized disputes\n[Ref.: No]",
-                                              "Stock of refugees from neigbor (log)",
                                               "Religion, Muslim\n[Ref.: Christian]",
                                               "Religion, Other\n[Ref.: Christian]",
-                                              "Different religion\n[Ref.: No]",
+                                              "Religious proximity",
                                               "Colonial history\n[Ref.: No]",
                                               "Common language\n[Ref.: No]"))))
 
@@ -707,7 +708,7 @@ result_mnom_ame.fig <- ame_results.df %>%
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(.~fac_ind_en(typology)) +
   scale_x_discrete(drop = FALSE) + 
-  ylim(-.25, .25) +
+  ylim(-.3, .3) +
   coord_flip() +
   labs(x = "", y = "") +
   theme.basic +
