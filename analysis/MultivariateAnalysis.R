@@ -751,7 +751,7 @@ imp_nest.df <- import("./output/imputed_data.rds") %>%
   group_by(imp_no) %>%
   nest() %>%
   mutate(formula = paste0("state1_typology", " ~ ", 
-                          str_replace_all(iv[13],
+                          str_replace_all(iv[12],
                                           "state1_military_expenditure_perc_gdp",
                                           "state1_military")))
 
