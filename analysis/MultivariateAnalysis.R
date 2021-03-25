@@ -12,7 +12,7 @@
 ## -------------------------------------------------------------------------- ##
 if (!require("xfun")) install.packages("xfun")
 pkg_attach2("tidyverse", "countrycode", "janitor", "broom", "margins", "patchwork", "gtools",
-            "nnet", "ggeffects", "mice", "rio", "gt")
+            "nnet", "ggeffects", "mice", "rio", "gt", "lemon")
 
 
                             ###################
@@ -145,16 +145,18 @@ ind_perc_region.fig <- border.df %>%
   geom_bar(stat = "identity") +
   geom_text(stat = "identity", aes(label = paste0("N = ", count)), vjust = -0.3,
             size = 2.8) +
-  facet_wrap(~factor(continent1, 
+  facet_rep_wrap(~factor(continent1, 
                      levels = c("Africa", "Americas", "Asia", "Europe", "World"),
                      labels = c("Africa", "North & South America", "Asia (incl. Oceania)", 
-                                "Europe", "Global distribution"))) +
+                                "Europe", "Global distribution")),
+                 repeat.tick.labels = "top") +
   labs(x = "", y = "") +
   theme.basic +
-  theme(axis.text = element_text(size = 10),
+  theme(axis.text = element_text(size = 14),
         axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(size = 14),
         panel.spacing.y = unit(5, "lines")) +
-  scale_y_continuous(labels = function(x) paste0(x, "%"))
+  scale_y_continuous(labels = function(x) paste0(x, "%"), expand = expansion(mult = c(0, .1)))
 
 # Round global distribution (regions)
 global_dist.df <- border.df %>%
@@ -981,7 +983,7 @@ logit_results.gt <- gt(logit_results.gt) %>%
 # Relative distribution of border infrastructure
 ggsave(
   plot = ind_perc_region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", 
-  width = 8, height = 8, unit = "in",
+  width = 10, height = 8, unit = "in",
   dpi = 300
 )
 
