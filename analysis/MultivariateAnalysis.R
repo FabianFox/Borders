@@ -708,7 +708,7 @@ result_mnom_ame.fig <- ame_results.df %>%
   geom_hline(yintercept = 0, colour = "gray", linetype = 2) +
   facet_wrap(.~fac_ind_en(typology)) +
   scale_x_discrete(drop = FALSE) + 
-  ylim(-.3, .3) +
+  ylim(-.35, .35) +
   coord_flip() +
   labs(x = "", y = "") +
   theme.basic +
