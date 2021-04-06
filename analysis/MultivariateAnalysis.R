@@ -196,9 +196,9 @@ border.df <- border.df %>%
          # Culture
          state1_relig_shrt, 
          relig_prox,
-         colony, comlang_off,
-         # Controls
-         refugees_incoming_log)
+         # Control
+         colony, 
+         comlang_off)
 
 
 #                      DESCRIPTIVE STATISTICS & FIGURES
@@ -217,9 +217,8 @@ border_vars <- border.df %>%
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
     disp_from_2000_to_2014,
-    refugees_incoming_log,
     # culture
-    diff_relig_shrt,
+    relig_prox,
     # Control
     colony,
     comlang_off
@@ -249,7 +248,7 @@ border_vars <- border_vars %>%
     levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
                "absdiff_pol", "state1_military_expenditure_perc_gdp",
                "state1_nterror_log", "disp_from_2000_to_2014",
-               "refugees_incoming_log", "diff_relig_shrt", 
+               "relig_prox", 
                "colony", "comlang_off"),
     labels = c("GDP per capita (in USD), log",
                "GDP per capita (in USD), ratio",
@@ -258,17 +257,15 @@ border_vars <- border_vars %>%
                "Military expenditure (as % of GDP)",
                "Terrorist incidents (annual), log",
                "Militarized disputes",
-               "Stock of refugees from neighbor, log",
-               "Different majority religion",
+               "Religious proximity",
                "Shared colonial history",
                "Common official language")),
     source = c("PolityIV (2017)",
-               "CEPII (2011)",
-               "CEPII (2011)",
-               "COW: World Religion Data (2010)",
+               "CEPII Gravity Database",
+               "CEPII Gravity Database",
                "COW: DyadMID (2000-2014)",
                "World Bank (2017)",
-               "World Refugee Dataset (2015)",
+               "CEPII Gravity Database",
                "World Bank (2017)",
                "World Bank (2017)",
                "Global Terrorism Database (2017)",
@@ -297,9 +294,8 @@ border.plots <- border.df %>%
     state1_military_expenditure_perc_gdp,
     state1_nterror_log,
     disp_from_2000_to_2014,
-    refugees_incoming_log,
     # culture
-    diff_relig_shrt,
+    relig_prox,
     # Control
     colony,
     comlang_off
@@ -329,10 +325,9 @@ border.plots <- border.plots %>%
     title = c("Difference in political regimes",
               "Shared colonial history",
               "Common official language",
-              "Different majority religion",
               "Militarized disputes",
               "GDP per capita (in USD), ratio",
-              "Stock of refugees from neighbor, log",
+              "Religious proximity",
               "GDP per capita (in USD), log",
               "Military expenditure (as % of GDP)",
               "Terrorist incidents (annual), log",
@@ -342,7 +337,7 @@ border.plots <- border.plots %>%
      levels = c("state1_gdp_log", "ratio_gdp", "state1_polity", 
                 "absdiff_pol", "state1_military_expenditure_perc_gdp",
                 "state1_nterror_log", "disp_from_2000_to_2014", 
-                "refugees_incoming_log", "diff_relig_shrt", 
+                "relig_prox", 
                 "colony", "comlang_off"),
      labels = c("GDP per capita (in USD), log",
                 "GDP per capita (in USD), ratio",
@@ -351,8 +346,7 @@ border.plots <- border.plots %>%
                 "Military expenditure (as % of GDP)",
                 "Terrorist incidents (annual), log",
                 "Militarized disputes",
-                "Stock of refugees from neighbor, log",
-                "Different majority religion",
+                "Religious proximity",
                 "Shared colonial history",
                 "Common official language"))) %>%
   arrange(variable)
@@ -380,7 +374,7 @@ border.plots <- border.plots %>%
 # Create plots
 border.plots <- border.plots %>%
   mutate(plots = ifelse(variable %in% c("Militarized disputes",
-                                        "Different majority religion", 
+                                        "Religious proximity", 
                                         "Shared colonial history", 
                                         "Common official language"),
                         map(.x = data, ~ggplot(data = .x) +
