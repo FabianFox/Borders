@@ -4,7 +4,6 @@
 ### Download data: 03.04.2018
 
 # Notes & Issues
-# - Update PolityIV to 2018 (http://www.systemicpeace.org/inscr/p4v2018.xls)
 # - CoW Direct Contiguity is expanded by dyad between NGA-TCD due to aridification
 #   of lake Chad, erroneous entries - ARE-QAT, MMR-PAK - are removed
 
