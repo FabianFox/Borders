@@ -143,6 +143,12 @@ ind_perc_region.fig <- border.df %>%
   bind_rows(ind_perc.df) %>%
   ggplot(mapping = aes(x = fac_ind_en(state1_typology), y = perc)) +
   geom_bar(stat = "identity") +
+  # 'hacky' solution to create a custom legend
+  geom_point(aes(shape = fac_ind_en(state1_typology)), alpha = 0) + 
+  guides(shape = guide_legend(override.aes = list(size = 5, alpha = 1))) +
+  scale_x_discrete(name = "", labels = c("N","L", "C", "B", "F")) +
+  scale_shape_manual(name = "Legend", values = c("N","L", "C", "B", "F")) +
+  # 
   geom_text(stat = "identity", aes(label = paste0("N = ", count)), vjust = -0.3,
             size = 4) +
   facet_rep_wrap(~factor(continent1, 
@@ -153,9 +159,11 @@ ind_perc_region.fig <- border.df %>%
   labs(x = "", y = "") +
   theme.basic +
   theme(axis.text = element_text(size = 12),
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        axis.text.x = element_text(angle = 0, hjust = 0.5, size = 14),
         strip.text = element_text(size = 14),
-        panel.spacing.y = unit(5, "lines")) +
+        panel.spacing.y = unit(5, "lines"),
+        legend.position = c(.85, 0.25),
+        legend.text = element_text(size = 14)) +
   scale_y_continuous(labels = function(x) paste0(x, "%"),
                      expand = expansion(mult = c(0, .1)))
 
