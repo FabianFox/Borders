@@ -11,8 +11,8 @@
 # Load/install packages
 ## -------------------------------------------------------------------------- ##
 if (!require("xfun")) install.packages("xfun")
-pkg_attach2("tidyverse", "countrycode", "janitor", "broom", "margins", "patchwork", "gtools",
-            "nnet", "ggeffects", "mice", "rio", "gt", "lemon")
+pkg_attach2("tidyverse", "countrycode", "janitor", "broom", "margins",
+            "patchwork", "gtools", "nnet", "ggeffects", "mice", "rio", "gt", "lemon")
 
 
                             ###################
@@ -206,7 +206,11 @@ border.df <- border.df %>%
          relig_prox,
          # Control
          colony, 
-         comlang_off)
+         comlang_off,
+         # Geographical controls
+         border_length_geo,
+         lnrti,
+         perc_river)
 
 
 #                      DESCRIPTIVE STATISTICS & FIGURES
@@ -582,7 +586,7 @@ imp_method[c("state1_relig_shrt")] <- "polyreg"
 
 # Create imputed datasets
 model_imp.df <- mice(model.df, m = 50, predictorMatrix = pred.mat, 
-                     method = imp_method, print = FALSE, seed = 2503)           # set.seed (init. sub.: 2801)
+                     method = imp_method, print = FALSE, seed = 120421)         # set.seed (init. sub.: 2801)
 
 # Export to Stata
 # Adopted from: https://stackoverflow.com/questions/49965155/importing-mice-object-to-stata-for-analysis
@@ -610,7 +614,12 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # mi import ice
 
 # * Multinomial regression
-# eststo ml: mi estimate, post : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.disp_from_2000_to_2010 refugees_incoming_log i.state1_relig_shrt i.diff_relig_shrt i.colony i.comlang_off, vce(cluster state1)
+# * one-way cluster by dyadID
+# * eststo ml: mi estimate, post : mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.disp_from_2000_to_2014 i.state1_relig_shrt relig_prox i.colony i.comlang_off, cluster(dyadID)
+
+# * Multinomial regression
+# * two-way clustering by state1 and dyadID
+# eststo ml: mi estimate, cmdok post : vce2way mlogit state1_typology state1_gdp_log ratio_gdp state1_polity absdiff_pol state1_military state1_nterror_log i.disp_from_2000_to_2014 i.state1_relig_shrt relig_prox i.colony i.comlang_off, cluster(state1 dyadID)
 
 # * export logits
 # esttab ml using "C:\Users\guelzauf\Seafile\Meine Bibliothek\Projekte\C01_Grenzen\Data\Analysis\Border Data\output\stata\mlogit_logit_results.csv", unstack cells(b se t p ci) nostar plain replace
@@ -618,11 +627,10 @@ export(model_imp.df, file = "./output/imputed_data.rds")
 # * https://www.stata.com/statalist/archive/2012-03/msg00927.html
 # *eststo ml
 
-# * AME for all response categories (see: https://www.statalist.org/forums/forum/general-stata-discussion/general/1591606-marginal-effects-of-multinomial-logit)
 # forval i = 1/5 {
-#   est res ml
-#   mimrgns, dydx(*) pr(out(`i')) post
-#  est sto ml`i'
+#  est res ml
+#  mimrgns, dydx(*) pr(out(`i')) post
+# est sto ml`i'
 # }
 
 # * Export results
@@ -815,7 +823,7 @@ ame_sd.df <- imp_ame.df %>%
 
 # Mean, SD, Mean +/- 1 SD
 # Continuous predictors
-pred <- colnames(ame_sd.df)[c(3, 8:13)]
+pred <- colnames(ame_sd.df)[c(3, 7:12)]
 pred[which("state1_military" == pred)] <- "state1_military_expenditure_perc_gdp"
 
 # Get distribution on continuous predictors
@@ -837,7 +845,7 @@ mean_sd.df <- border.df %>%
 ame_sd.df %>%
   filter(category == "Fortified") %>%
   select(state1_gdp_log, ratio_gdp, state1_military, state1_nterror_log, 
-         disp_from_2000_to_2010)
+         disp_from_2000_to_2014)
 
 # Barrier borders
 ame_sd.df %>%
@@ -847,18 +855,18 @@ ame_sd.df %>%
 # Checkpoint borders
 ame_sd.df %>%
   filter(category == "Checkpoint") %>%
-  select(state1_gdp_log, disp_from_2000_to_2010, comlang_off)
+  select(state1_gdp_log, disp_from_2000_to_2014, comlang_off)
 
 # Landmark borders
 ame_sd.df %>%
   filter(category == "Landmark") %>%
-  select(state1_gdp_log, ratio_gdp, disp_from_2000_to_2010, 
+  select(state1_gdp_log, ratio_gdp, disp_from_2000_to_2014, 
          state1_relig_shrtislm, diff_relig_shrt, comlang_off)
 
 # No man's land borders
 ame_sd.df %>%
   filter(category == "'No man's land'") %>%
-  select(state1_gdp_log, absdiff_pol, disp_from_2000_to_2010, refugees_incoming_log)
+  select(state1_gdp_log, absdiff_pol, disp_from_2000_to_2014, refugees_incoming_log)
 
 # +/- 1 SD
 mean_sd.df
@@ -892,6 +900,10 @@ ggplot(imp_predict.df, aes(x, predicted)) +
     title = "",
     x = "", y = "") +
   theme_minimal()
+
+                          ##########################
+                          #       Appendix         #
+                          ##########################
 
 # Import logits (Appendix: Table A1)
 # ---------------------------------------------------------------------------- #
@@ -927,6 +939,7 @@ logit_results.df <- logit_results.df %>%
     variable == "3.state1_relig_shrt" ~ "relig_other",
     TRUE ~ as.character(variable)),
     variable = str_replace_all(variable, "1\\.", "")) %>%
+  filter(!str_starts(variable, "0") & !str_detect(variable, "state1_relig_shrt")) %>%
   mutate(pstars = stars.pval(p),
          variable = fct_rev(factor(variable, 
                                    levels = c("state1_gdp_log",
@@ -935,11 +948,10 @@ logit_results.df <- logit_results.df %>%
                                               "absdiff_pol", 
                                               "state1_military",
                                               "state1_nterror_log",
-                                              "disp_from_2000_to_2010",
-                                              "refugees_incoming_log",
+                                              "disp_from_2000_to_2014",
                                               "relig_muslim",
                                               "relig_other",
-                                              "diff_relig_shrt",
+                                              "relig_prox",
                                               "colony", 
                                               "comlang_off",
                                               "_cons"),
@@ -950,10 +962,9 @@ logit_results.df <- logit_results.df %>%
                                               "Military expenditure (as % of GDP), builder",
                                               "Terrorist incidents (log), builder",
                                               "Militarized disputes\n[Ref.: No]",
-                                              "Stock of refugees from neigbor (log)",
                                               "Religion, Muslim\n[Ref.: Christian]",
                                               "Religion, Other\n[Ref.: Christian]",
-                                              "Different religion\n[Ref.: No]",
+                                              "Religious proximity",
                                               "Colonial history\n[Ref.: No]",
                                               "Common language\n[Ref.: No]",
                                               "Constant"))))
@@ -967,7 +978,7 @@ logit_results.gt <- logit_results.df %>%
   pivot_longer(cols = c("coef", "se")) %>%
   pivot_wider(names_from = typology, values_from = value) %>%
   select(-name) %>%
-  mutate(`checkpoint border` = rep(NA, 28)) %>%
+  mutate(`checkpoint border` = rep(NA, 26)) %>%
   relocate("checkpoint border", .before = `barrier border`) %>%
   set_names(nm = c("Independent variables", "'No man's land'", "Landmark", 
                    "Checkpoint", "Barrier", "Fortified"))
