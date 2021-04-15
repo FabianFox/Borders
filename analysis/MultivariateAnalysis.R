@@ -844,8 +844,8 @@ mean_sd.df <- border.df %>%
 # Fortified borders
 ame_sd.df %>%
   filter(category == "Fortified") %>%
-  select(state1_gdp_log, ratio_gdp, state1_military, state1_nterror_log, 
-         disp_from_2000_to_2014)
+  select(state1_gdp_log, ratio_gdp, absdiff_pol, state1_military, state1_nterror_log, 
+         disp_from_2000_to_2014, comlang_off)
 
 # Barrier borders
 ame_sd.df %>%
@@ -855,18 +855,18 @@ ame_sd.df %>%
 # Checkpoint borders
 ame_sd.df %>%
   filter(category == "Checkpoint") %>%
-  select(state1_gdp_log, disp_from_2000_to_2014, comlang_off)
+  select(state1_gdp_log, comlang_off)
 
 # Landmark borders
 ame_sd.df %>%
   filter(category == "Landmark") %>%
   select(state1_gdp_log, ratio_gdp, disp_from_2000_to_2014, 
-         state1_relig_shrtislm, diff_relig_shrt, comlang_off)
+         state1_relig_shrtislm, state1_relig_shrtother, comlang_off)
 
 # No man's land borders
 ame_sd.df %>%
   filter(category == "'No man's land'") %>%
-  select(state1_gdp_log, absdiff_pol, disp_from_2000_to_2014, refugees_incoming_log)
+  select(state1_gdp_log, colony)
 
 # +/- 1 SD
 mean_sd.df
