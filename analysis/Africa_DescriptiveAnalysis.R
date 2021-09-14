@@ -22,8 +22,9 @@ pkg_attach2("tidyverse", "countrycode", "igraph", "rio", "janitor", "ggrepel",
 
 # Load: Source data and border indicator
 ### ------------------------------------------------------------------------ ###
-# source data
-source("SourceData.R")
+# Source data
+# source("SourceData.R")
+border.df <- import("./output/border.rds")
 
 # indicator
 indicator.df <- import("Y:\\Grenzen der Welt\\Grenzdossiers\\Typologie\\BorderTypology.xlsx",
