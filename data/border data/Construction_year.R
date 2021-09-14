@@ -117,8 +117,13 @@ fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df
 fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "MRT", "built"] <- "2013" # estimate
 # Source: Frontex (2016) “Africa-Frontex Intelligence Community Joint Report 2016”, p. 13
 fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "NER", "built"] <- "2016" # estimate
-# Source: •	Hanlon & Herbert (2015) “Border security challenges in the Grand Maghreb”, Washington, DC: Peaceworks No. 109 (p. 34) 
+# Source: Hanlon & Herbert (2015) “Border security challenges in the Grand Maghreb”, Washington, DC: Peaceworks No. 109 (p. 34) 
 fortified_borders.df[fortified_borders.df$state1 == "DZA" & fortified_borders.df$state2 == "TUN", "built"] <- "2015" # estimate
+# Source: https://www.theguardian.com/world/2017/jun/20/ecuador-peru-border-wall-dispute-trump-wall
+fortified_borders.df[fortified_borders.df$state1 == "ECU" & fortified_borders.df$state2 == "PER", "built"] <- "2017" # estimate
+# Source:
+fortified_borders.df[fortified_borders.df$state1 == "EGY" & fortified_borders.df$state2 == "LBY", "built"] <- "" # estimate
+
 
 
 
