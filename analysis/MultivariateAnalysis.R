@@ -67,7 +67,7 @@ border.df <- border.df %>%
 fac_ind_en <- function(x) {
   factor(x, levels = c("frontier border", "landmark border", "checkpoint border", 
                        "barrier border", "fortified border"),
-         labels = c("'No man's land'","Landmark", "Checkpoint", 
+         labels = c("'No-man's-land'","Landmark", "Checkpoint", 
                     "Barrier", "Fortified"))
 }
 
@@ -262,8 +262,8 @@ border_vars <- border_vars %>%
                "state1_nterror_log", "disp_from_2000_to_2014",
                "relig_prox", 
                "colony", "comlang_off"),
-    labels = c("GDP per capita (in USD), log",
-               "GDP per capita (in USD), ratio",
+    labels = c("GDP per capita (in 2020 USD), log",
+               "GDP per capita (in 2020 USD), ratio",
                "Political regime",
                "Difference in political regimes",
                "Military expenditure (as % of GDP)",
@@ -338,9 +338,9 @@ border.plots <- border.plots %>%
               "Shared colonial history",
               "Common official language",
               "Militarized disputes",
-              "GDP per capita (in USD), ratio",
+              "GDP per capita (in 2020 USD), ratio",
               "Religious proximity",
-              "GDP per capita (in USD), log",
+              "GDP per capita (in 2020 USD), log",
               "Military expenditure (as % of GDP)",
               "Terrorist incidents (annual), log",
               "Political regime"),
@@ -351,8 +351,8 @@ border.plots <- border.plots %>%
                 "state1_nterror_log", "disp_from_2000_to_2014", 
                 "relig_prox", 
                 "colony", "comlang_off"),
-     labels = c("GDP per capita (in USD), log",
-                "GDP per capita (in USD), ratio",
+     labels = c("GDP per capita (in 2020 USD), log",
+                "GDP per capita (in 2020 USD), ratio",
                 "Political regime",
                 "Difference in political regimes",
                 "Military expenditure (as % of GDP)",
@@ -441,7 +441,7 @@ relig.fig <- relig.typ %>%
                           levels = c("frontier border", "landmark border", 
                                      "checkpoint border", "barrier border", 
                                      "fortified border", "global"),
-                          labels = c("'No man's land'","Landmark", "Checkpoint", 
+                          labels = c("'No-man's-land'","Landmark", "Checkpoint", 
                                      "Barrier", "Fortified", "Global")), 
                y = perc, fill = state1_relig_shrt),
            stat = "identity") +
@@ -464,8 +464,8 @@ border_vars.plot <- gt(border_vars) %>%
       map(border.plots$plots, ggplot_image, height = px(100))
     }
   ) %>%
-  cols_align(align = "left", columns = c("Variable", "Source")) %>%
-  cols_align(align = "right", columns = c("Mean", "SD", "Max", "Min", "Observations", "Plot"))
+  cols_align(align = "left", columns = c("Variable", "Source", "Plot")) %>%
+  cols_align(align = "right", columns = c("Mean", "SD", "Max", "Min", "Observations"))
 
 
                           ##########################
@@ -996,7 +996,7 @@ logit_results.gt <- gt(logit_results.gt) %>%
 # Figure 2
 # Relative distribution of border infrastructure
 ggsave(
-  plot = ind_perc_region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig2 - Typology By Region.tiff", 
+  plot = ind_perc_region.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Figure 2 - Relative Distribution of Border Typology by Continent.tiff", 
   width = 10, height = 8, unit = "in",
   dpi = 300
 )
@@ -1004,13 +1004,13 @@ ggsave(
 # Table 1
 # Bivariate relationship
 gtsave(
-  border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Tab1 - Descriptive Statistics_axis.png"
+  border_vars.plot, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Table 1 - Bivariate Relationships Means by Border Typology.png"
 )
 
 # Figure 3
 # Religion, categorical
 ggsave(
-  plot = relig.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig3 - Religion.tiff", 
+  plot = relig.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Figure 3 - Relative Distribution of Majority Religion by Border Typology.tiff", 
   width =  8, height = 4, unit = "in",
   dpi = 300
 )
@@ -1018,7 +1018,7 @@ ggsave(
 # Figure 4
 # Multinomial regression (AME)
 ggsave(
-  plot = result_mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Fig4 - Multinomial Regression - AME.tiff", 
+  plot = result_mnom_ame.fig, "Y:/Grenzen der Welt/Projekte/Walls, barriers, checkpoints and landmarks/Figures/Figure 4 - Multinomial Logistic Regression on Border Typology.tiff", 
   width = 14, height = 8.5, unit = "in",
   dpi = 300
 )
