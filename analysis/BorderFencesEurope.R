@@ -22,7 +22,7 @@
 
 # Load/install packages
 if (!require("pacman")) install.packages("pacman")
-p_load(tidyverse, rio, cowplot)
+p_load(tidyverse, rio, cowplot, patchwork)
 
 ## ------------------------------------------------------------------------------------------------------------ ##
 
@@ -33,37 +33,33 @@ EUwalls <- import("./data/EU-Walls.xlsx") %>%
 
 # Basic description
 walls.df <- EUwalls %>%
-  filter(begin >= 2010 & reason == "migration",
-         state1 != "MKD") %>%
+  filter(state1 != "MKD", !is.na(length),
+         begin >= 2010) %>%
   group_by(begin) %>%
   summarise(length = sum(length), n = n()) %>%
-  mutate(cumsum = cumsum(length))
-
-walls.df <- walls.df %>%
-  filter(begin >= 2014)
+  mutate(cumsum_length = cumsum(length),
+         cumsum_n = cumsum(n))
 
 # Plot number of fences and length
 nfence <- ggplot(walls.df, aes(x = begin, y = n)) +
   geom_bar(stat = "identity") +
-  ylab("") +
-  xlab("") +
-  scale_x_continuous(breaks = seq(2010, 2016, 1)) + 
-  theme_minimal() +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        text = element_text(size = 14),
-        axis.ticks.x = element_line(size = .5))
+  geom_point(aes(x = begin, y = cumsum_n), size = 2) +
+  geom_line(aes(x = begin, y = cumsum_n), size = 1) +
+  labs(x = "Year", y = "Number",
+       title = "Number of border barriers in Europe, 2010-2020") + 
+  scale_x_continuous(breaks = seq(2010, 2020, 1)) + 
+  theme_minimal_grid()
 
-lfence <- ggplot(walls.df, aes(x = begin, y = cumsum)) +
-  geom_point() +
-  ylab("") +
-  xlab("") +
-  scale_x_continuous(breaks = seq(2010, 2016, 1)) + 
-  theme_minimal() +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        text = element_text(size = 14),
-        axis.ticks.x = element_line(size = .5))
+lfence <- ggplot(walls.df, aes(x = begin, y = cumsum_length)) +
+  geom_point(size = 2) +
+  geom_line(size = 1) + 
+  labs(x = "Year", y = "Length in km",
+       title = "Length of border barriers in Europe, 2010-2020") +
+  scale_x_continuous(breaks = seq(2010, 2020, 1)) + 
+  theme_minimal_grid()
 
 # Arrange plots
-plot_grid(lfence, nfence, nrow = 2, align = "v")
+EU_walls.fig <- nfence / lfence
+
+# Export
+ggsave(plot = EU_walls.fig, file = "O:/Grenzen der Welt/Projekte/Die Zeit/figures/Num_EU-Fences.png")
